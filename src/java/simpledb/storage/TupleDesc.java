@@ -10,6 +10,9 @@ import java.util.*;
  */
 public class TupleDesc implements Serializable {
 
+    //todo: not sure if this is allowed
+    TDItem TDItems[];
+
     /**
      * A help class to facilitate organizing the information of each field
      * */
@@ -39,12 +42,15 @@ public class TupleDesc implements Serializable {
 
     /**
      * @return
-     *        An iterator which iterates over all the field TDItems
+     *        An iterator which iterates over all the field TDItems (TupleDesc Items)
      *        that are included in this TupleDesc
      * */
     public Iterator<TDItem> iterator() {
         // some code goes here
-        return null;
+        if(TDItems == null){
+            TDItems = new TDItem[]{};
+        }
+        return Arrays.asList(TDItems).iterator();
     }
 
     private static final long serialVersionUID = 1L;
@@ -62,6 +68,11 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr, String[] fieldAr) {
         // some code goes here
+        TDItems = new TDItem[typeAr.length];
+        for (int i = 0; i < typeAr.length; i++) {
+            TDItems[i] = new TDItem(typeAr[i],fieldAr[i]);
+        }
+
     }
 
     /**
@@ -74,6 +85,10 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr) {
         // some code goes here
+        TDItems = new TDItem[typeAr.length];
+        for (int i = 0; i < typeAr.length; i++) {
+            TDItems[i] = new TDItem(typeAr[i],null);
+        }
     }
 
     /**
@@ -81,7 +96,7 @@ public class TupleDesc implements Serializable {
      */
     public int numFields() {
         // some code goes here
-        return 0;
+        return TDItems.length;
     }
 
     /**
@@ -95,7 +110,12 @@ public class TupleDesc implements Serializable {
      */
     public String getFieldName(int i) throws NoSuchElementException {
         // some code goes here
-        return null;
+        try{
+            TDItem myItem = TDItems[i];
+            return myItem.fieldName;
+        } catch (NoSuchElementException e){
+            throw new NoSuchElementException("Index i='" + i + "' is out of bounds.");
+        }
     }
 
     /**
@@ -110,7 +130,14 @@ public class TupleDesc implements Serializable {
      */
     public Type getFieldType(int i) throws NoSuchElementException {
         // some code goes here
-        return null;
+        try{
+            TDItem myItem = TDItems[i];
+            return myItem.fieldType;
+        } catch (NoSuchElementException e){
+            throw new NoSuchElementException("Index i='" + i + "' is out of bounds.");
+
+        }
+
     }
 
     /**
@@ -124,7 +151,30 @@ public class TupleDesc implements Serializable {
      */
     public int fieldNameToIndex(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        NoSuchElementException noSuchElementException = new NoSuchElementException("String name='" + name + "' doesn't exist in TDItems.");
+        try{
+            if(name == null){
+                throw noSuchElementException ;
+            }
+
+            TDItem foundItem = Arrays.stream(TDItems)
+                    .filter(tdItem -> name.equals(tdItem.fieldName))
+                    .findAny()
+                    .orElse(null);
+
+            //throw exception for non-existent fields
+            int fieldIndex = Arrays.asList(TDItems).indexOf(foundItem);
+            if(foundItem == null){
+                throw noSuchElementException ;
+            }
+            return fieldIndex;
+        }
+        catch (NoSuchElementException e){
+            throw noSuchElementException;
+        }
+        catch (Exception e2){
+            throw e2;
+        }
     }
 
     /**
@@ -133,7 +183,12 @@ public class TupleDesc implements Serializable {
      */
     public int getSize() {
         // some code goes here
-        return 0;
+        int bytesEstimate = 0;
+        if(TDItems != null && TDItems[0] != null){
+            bytesEstimate = (int) (bytesEstimate + (Math.ceil(TDItems[0].fieldType.getLen() * TDItems.length)));
+        }
+
+        return bytesEstimate;
     }
 
     /**
@@ -148,7 +203,20 @@ public class TupleDesc implements Serializable {
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
         // some code goes here
-        return null;
+        List<TDItem> myItems = new ArrayList<TDItem>();
+        myItems.addAll(List.of(td1.TDItems));
+        myItems.addAll(List.of(td2.TDItems));
+
+        Type[] myTypes = new Type[myItems.size()];
+        String[] myStrings = new String[myItems.size()];
+        for (int i = 0; i < myItems.size() ; i++) {
+//            myTypes[i]= Type.INT_TYPE;
+            myTypes[i]= myItems.get(i).fieldType;
+//            myStrings[i]= "Test";
+            myStrings[i]= myItems.get(i).fieldName;
+//            myStrings[i]= myItems.get(i).fieldName;
+        }
+        return new TupleDesc(myTypes,myStrings);
     }
 
     /**
@@ -164,12 +232,36 @@ public class TupleDesc implements Serializable {
 
     public boolean equals(Object o) {
         // some code goes here
+        try{
+            if (o instanceof TupleDesc) {
+                TupleDesc TupleDescObject = (TupleDesc) o;
+                if( TupleDescObject.TDItems.length == this.TDItems.length){
+                    for (int i = 0; i < TupleDescObject.TDItems.length; i++) {
+                        if((!Objects.equals(TupleDescObject.TDItems[i].fieldName, this.TDItems[i].fieldName)) || (this.TDItems[i].fieldType != TupleDescObject.TDItems[i].fieldType)){
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+        } catch (Exception e)
+        {
+            System.out.println("Exception details: " + e.getMessage());
+            throw e;
+        }
+
         return false;
     }
 
     public int hashCode() {
         // If you want to use TupleDesc as keys for HashMap, implement this so
         // that equal objects have equals hashCode() results
+        //todo: complete hashCode
         throw new UnsupportedOperationException("unimplemented");
     }
 
@@ -182,6 +274,16 @@ public class TupleDesc implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return "";
+        if(TDItems == null || TDItems.length == 0){
+            return "";
+        }
+        String finalResult = TDItems[0].fieldType + "(" + TDItems[0].fieldName + ")";
+        for (int i = 1; i < TDItems.length; i++) {
+            finalResult = String.join(",",finalResult,TDItems[i].fieldType + "(" + TDItems[i].fieldName + ")" );
+        }
+
+        return finalResult;
     }
+
+
 }
