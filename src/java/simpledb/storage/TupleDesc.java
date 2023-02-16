@@ -158,14 +158,18 @@ public class TupleDesc implements Serializable {
      */
     public int fieldNameToIndex(String name) throws NoSuchElementException {
         // some code goes here
-        for (int i = 0; i < tdItems.size(); i++) {
-            if (name != null && tdItems.get(i).fieldName != null) {
-                if (tdItems.get(i).fieldName.equals(name)) {
-                    return i;
-                }
-            }
+        try{
+	        for (int i = 0; i < tdItems.size(); i++) {
+	            if (name != null && tdItems.get(i).fieldName != null) {
+	                if (tdItems.get(i).fieldName.equals(name)) {
+	                    return i;
+	                }
+	            }
+	        }
+		}
+        catch (Exception e2){
+            throw e2;
         }
-
         throw new NoSuchElementException("field name not found");
     }
 
@@ -247,6 +251,14 @@ public class TupleDesc implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return "TupleDesc fields: (" + tdItems + ")";
+        if(tdItems == null || tdItems.size() == 0){
+            return "";
+        }
+        String finalResult = tdItems.get(0).fieldType + "(" + tdItems.get(0).fieldName + ")";
+        for (int i = 1; i < tdItems.size(); i++) {
+            finalResult = String.join(",",finalResult,tdItems.get(i).fieldType + "(" + tdItems.get(i).fieldName + ")" );
+        }
+
+        return finalResult;
     }
 }
