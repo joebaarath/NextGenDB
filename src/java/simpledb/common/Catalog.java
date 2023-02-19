@@ -27,6 +27,10 @@ public class Catalog {
      * Constructor.
      * Creates a new, empty catalog.
      */
+
+    private HashMap<DbFile, String> fileNameMap;
+    private HashMap<String, String> namePkeyFieldMap;
+    private HashMap<String, DbFile> pkeyFieldFileMap;
     public Catalog() {
         // some code goes here
     }
@@ -42,6 +46,9 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+        if (!file.equals(null) || !name.equals(null) || !pkeyField.equals(null)){
+            
+        }
     }
 
     public void addTable(DbFile file, String name) {
