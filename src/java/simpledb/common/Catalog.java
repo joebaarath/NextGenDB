@@ -28,31 +28,35 @@ public class Catalog {
      * Creates a new, empty catalog.
      */
 
-    private HashMap<String, DbFile> nameFileMap;
-    private HashMap<Integer, String> idPkeyFieldMap;
-    private HashMap<Integer, DbFile> idFileMap;
+    private HashMap<DbFile, String> fileNameMap;
+    private HashMap<String, String> namePkeyFieldMap;
+    private HashMap<String, DbFile> pkeyFieldFileMap;
     public Catalog() {
         // some code goes here
-        nameFileMap = new HashMap<String, DbFile>();
-        idPkeyFieldMap = new HashMap<Integer, String>();
-        idFileMap = new HashMap<Integer, DbFile>();
     }
 
     /**
      * Add a new table to the catalog.
      * This table's contents are stored in the specified DbFile.
-     * If there exists a table with the same name or ID, replace that old table with this one.
+     * If there exists a table with the same name or ID, replace that old table with this one. 
      * @param file the contents of the table to add;  file.getId() is the identfier of
-     *    this file/tupledesc param for the calls getTupleDesc and getFile.
-     * @param name the name of the table -- may be an empty string.  May not be null.
+     *    this file/tupledesc param for the calls getTupleDesc and getFile. 
+     * @param name the name of the table -- may be an empty string.  May not be null.  
      * @param pkeyField the name of the primary key field
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+<<<<<<< HEAD
         if (!name.equals(null)){
             nameFileMap.put(name, file);
             idPkeyFieldMap.put(file.getId(), pkeyField);
             idFileMap.put(file.getId(), file);
+=======
+        if (!file.equals(null) || !name.equals(null) || !pkeyField.equals(null)){
+            
+        }
+    }
+>>>>>>> parent of 13100eb ([Catalog] Added catalog)
 
     public void addTable(DbFile file, String name) {
         addTable(file, name, "");
@@ -74,10 +78,8 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public int getTableId(String name) throws NoSuchElementException {
-        if(nameFileMap.containsKey(name)){
-            return nameFileMap.get(name).getId();
-        }
-        throw new NoSuchElementException("No key exists");
+        // some code goes here
+        return 0;
     }
 
     /**
@@ -88,7 +90,7 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // some code goes here
-        return getDatabaseFile(tableid).getTupleDesc();
+        return null;
     }
 
     /**
@@ -99,38 +101,27 @@ public class Catalog {
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
         // some code goes here
-        if(idFileMap.containsKey(tableid)){
-            return idFileMap.get(tableid);
-        }
-        throw new NoSuchElementException("No such tableid exists");
+        return null;
     }
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
-        return idPkeyFieldMap.get(tableid);
+        return null;
     }
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return idFileMap.keySet().iterator();
+        return null;
     }
 
     public String getTableName(int id) {
         // some code goes here
-        for(Map.Entry<String, DbFile> entryForNameFile: nameFileMap.entrySet()){
-            if(entryForNameFile.getValue().getId() == id){
-                return entryForNameFile.getKey();
-            }
-        }
         return null;
     }
     
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
-        nameFileMap.clear();
-        idPkeyFieldMap.clear();
-        idFileMap.clear();
     }
     
     /**
