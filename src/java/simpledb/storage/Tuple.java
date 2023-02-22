@@ -68,7 +68,14 @@ public class Tuple implements Serializable {
      */
     public void setField(int i, Field f) {
         // some code goes here
+<<<<<<< HEAD
         this.fields.set(i,f);
+=======
+        
+        if(i >= 0  && i < this.fields.size()){
+            this.fields.set(i,f);
+        }
+>>>>>>> 13116871ebb82b02fd6b2439a3164e68a93b2462
     }
 
     /**
@@ -92,8 +99,21 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here
+<<<<<<< HEAD
         System.out.println(this.fields.toString());
         return this.fields.toString();
+=======
+        // System.out.println(this.fields.toString());
+        if(fields == null || fields.size() == 0){
+            return "";
+        }
+        String finalResult = fields.get(0).toString();
+        for (int i = 0; i < fields.size(); i++) {
+            finalResult = String.join(" ",finalResult,fields.get(i).toString() );
+        }
+
+        return finalResult;
+>>>>>>> 13116871ebb82b02fd6b2439a3164e68a93b2462
     }
 
     /**

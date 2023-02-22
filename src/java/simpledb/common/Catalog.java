@@ -28,9 +28,15 @@ public class Catalog {
      * Creates a new, empty catalog.
      */
 
+<<<<<<< HEAD
     private HashMap<String, DbFile> nameFileMap;
     private HashMap<Integer, String> idPkeyFieldMap;
     private HashMap<Integer, DbFile> idFileMap;
+=======
+    private HashMap<DbFile, String> fileNameMap;
+    private HashMap<String, String> namePkeyFieldMap;
+    private HashMap<String, DbFile> pkeyFieldFileMap;
+>>>>>>> 13116871ebb82b02fd6b2439a3164e68a93b2462
     public Catalog() {
         // some code goes here
         nameFileMap = new HashMap<String, DbFile>();
@@ -49,10 +55,15 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+<<<<<<< HEAD
         if (!name.equals(null)){
             nameFileMap.put(name, file);
             idPkeyFieldMap.put(file.getId(), pkeyField);
             idFileMap.put(file.getId(), file);
+=======
+        if (!file.equals(null) || !name.equals(null) || !pkeyField.equals(null)){
+            
+>>>>>>> 13116871ebb82b02fd6b2439a3164e68a93b2462
         }
     }
 

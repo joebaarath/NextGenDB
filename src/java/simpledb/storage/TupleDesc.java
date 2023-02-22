@@ -158,6 +158,7 @@ public class TupleDesc implements Serializable {
      */
     public int fieldNameToIndex(String name) throws NoSuchElementException {
         // some code goes here
+<<<<<<< HEAD
         for (int i = 0; i < tdItems.size(); i++) {
             if (name != null && tdItems.get(i).fieldName != null) {
                 if (tdItems.get(i).fieldName.equals(name)) {
@@ -166,6 +167,20 @@ public class TupleDesc implements Serializable {
             }
         }
 
+=======
+        try{
+	        for (int i = 0; i < tdItems.size(); i++) {
+	            if (name != null && tdItems.get(i).fieldName != null) {
+	                if (tdItems.get(i).fieldName.equals(name)) {
+	                    return i;
+	                }
+	            }
+	        }
+		}
+        catch (Exception e2){
+            throw e2;
+        }
+>>>>>>> 13116871ebb82b02fd6b2439a3164e68a93b2462
         throw new NoSuchElementException("field name not found");
     }
 
@@ -247,6 +262,18 @@ public class TupleDesc implements Serializable {
      */
     public String toString() {
         // some code goes here
+<<<<<<< HEAD
         return "TupleDesc fields: (" + tdItems + ")";
+=======
+        if(tdItems == null || tdItems.size() == 0){
+            return "";
+        }
+        String finalResult = tdItems.get(0).fieldType + "(" + tdItems.get(0).fieldName + ")";
+        for (int i = 1; i < tdItems.size(); i++) {
+            finalResult = String.join(",",finalResult,tdItems.get(i).fieldType + "(" + tdItems.get(i).fieldName + ")" );
+        }
+
+        return finalResult;
+>>>>>>> 13116871ebb82b02fd6b2439a3164e68a93b2462
     }
 }
