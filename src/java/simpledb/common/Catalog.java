@@ -46,17 +46,10 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
-<<<<<<< HEAD
         if (!name.equals(null)){
             nameFileMap.put(name, file);
             idPkeyFieldMap.put(file.getId(), pkeyField);
             idFileMap.put(file.getId(), file);
-=======
-        if (!file.equals(null) || !name.equals(null) || !pkeyField.equals(null)){
-            
-        }
-    }
->>>>>>> parent of 13100eb ([Catalog] Added catalog)
 
     public void addTable(DbFile file, String name) {
         addTable(file, name, "");
