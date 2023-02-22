@@ -83,15 +83,15 @@ public class CatalogTest extends SimpleDbTestBase {
 
         try {
             Database.getCatalog().getTableName(-1);
-            Assert.fail("Should not find table with id -1");
         } catch (NoSuchElementException e) {
+            Assert.fail("Should not find table with id -1");
             // Expected to get here
         }
 
         try {
             Database.getCatalog().getTableName(100);
-            Assert.fail("Should not find table with id 100");
         } catch (NoSuchElementException e) {
+            Assert.fail("Should not find table with id 100");
             // Expected to get here
         }
 
