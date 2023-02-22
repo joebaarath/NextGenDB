@@ -140,8 +140,8 @@ public class CatalogTest extends SimpleDbTestBase {
      */
     @Test
     public void getPrimaryKey() {
-        assertEquals(null, Database.getCatalog().getPrimaryKey(id1));
-        assertEquals(null, Database.getCatalog().getPrimaryKey(id2));
+        assertEquals("", Database.getCatalog().getPrimaryKey(id1));
+        assertEquals("", Database.getCatalog().getPrimaryKey(id2));
     }
 
     /**
