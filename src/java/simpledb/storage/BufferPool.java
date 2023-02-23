@@ -1,15 +1,16 @@
 package simpledb.storage;
 
-import simpledb.common.Database;
-import simpledb.common.Permissions;
-import simpledb.common.DbException;
-import simpledb.common.DeadlockException;
+import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
 import java.io.*;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -19,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * The BufferPool is also responsible for locking;  when a transaction fetches
  * a page, BufferPool checks that the transaction has the appropriate
  * locks to read/write the page.
- * 
+ *
  * @Threadsafe, all fields are final
  */
 public class BufferPool {
@@ -27,11 +28,14 @@ public class BufferPool {
     private static final int DEFAULT_PAGE_SIZE = 4096;
 
     private static int pageSize = DEFAULT_PAGE_SIZE;
-    
+
     /** Default number of pages passed to the constructor. This is used by
-    other classes. BufferPool should use the numPages argument to the
-    constructor instead. */
+     other classes. BufferPool should use the numPages argument to the
+     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
+
+    int maxNumOfPages;
+    List<Page> bufferPoolPages;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -40,20 +44,25 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
+        this.maxNumOfPages = numPages;
+
+        // Create an arraylist to store of pages
+        bufferPoolPages = new ArrayList<Page>();
+
     }
-    
+
     public static int getPageSize() {
-      return pageSize;
+        return pageSize;
     }
-    
+
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void setPageSize(int pageSize) {
-    	BufferPool.pageSize = pageSize;
+        BufferPool.pageSize = pageSize;
     }
-    
+
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void resetPageSize() {
-    	BufferPool.pageSize = DEFAULT_PAGE_SIZE;
+        BufferPool.pageSize = DEFAULT_PAGE_SIZE;
     }
 
     /**
@@ -71,10 +80,55 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
-        throws TransactionAbortedException, DbException {
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
+            throws TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+
+        //TODO: FUTURE LAB | Will acquire a lock and may block if that lock is held by another transaction.
+
+        //The retrieved page should be looked up in the buffer pool
+        List<Page> filteredBufferPool = bufferPoolPages.stream().filter(page -> page.getId() == pid).collect(Collectors.toList());
+        // if present, return
+        if(filteredBufferPool.size() == 1) {
+            return filteredBufferPool.get(0);
+        }
+        else if(filteredBufferPool.size() > 1) {
+            throw new DbException("Multiple duplicate page with the same page id in buffer pool");
+        }
+        else {
+
+            // if not present, check if there is sufficient space in buffer pool
+            if (this.bufferPoolPages.size() < this.maxNumOfPages) {
+                // it should be added to the buffer pool and returned
+
+                //I assume i have to go thru the entire catalog's table and files to find the page
+                Iterator<Integer> tableIdIterators =  Database.getCatalog().tableIdIterator();
+                while(tableIdIterators.hasNext()) {
+                    int tableId = tableIdIterators.next();
+                    DbFile file = Database.getCatalog().getDatabaseFile(tableId);
+                    try{
+                        Page pg = file.readPage(pid);
+                        if(pg != null){
+                            this.bufferPoolPages.add(pg);
+                            return pg;
+                        }
+                    }
+                    catch (Exception ignored){
+                        //assumes that when readPage is passed with an invalid pid, it will throw an error
+                    }
+
+                }
+                throw new DbException("Page not found in database");
+            }
+            else {
+                // if there is insufficient space in the buffer pool, throw error (for lab1)
+                //TODO: FUTURE LAB | eviction policy
+                throw new DbException("Insufficient space in the buffer pool");
+            }
+
+        }
+
+
     }
 
     /**
@@ -125,7 +179,7 @@ public class BufferPool {
      * acquire a write lock on the page the tuple is added to and any other 
      * pages that are updated (Lock acquisition is not needed for lab2). 
      * May block if the lock(s) cannot be acquired.
-     * 
+     *
      * Marks any pages that were dirtied by the operation as dirty by calling
      * their markDirty bit, and adds versions of any pages that have 
      * been dirtied to the cache (replacing any existing versions of those pages) so 
@@ -136,7 +190,7 @@ public class BufferPool {
      * @param t the tuple to add
      */
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
-        throws DbException, IOException, TransactionAbortedException {
+            throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
     }
@@ -155,7 +209,7 @@ public class BufferPool {
      * @param t the tuple to delete
      */
     public  void deleteTuple(TransactionId tid, Tuple t)
-        throws DbException, IOException, TransactionAbortedException {
+            throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
     }
@@ -172,13 +226,13 @@ public class BufferPool {
     }
 
     /** Remove the specific page id from the buffer pool.
-        Needed by the recovery manager to ensure that the
-        buffer pool doesn't keep a rolled back page in its
-        cache.
-        
-        Also used by B+ tree files to ensure that deleted pages
-        are removed from the cache so they can be reused safely
-    */
+     Needed by the recovery manager to ensure that the
+     buffer pool doesn't keep a rolled back page in its
+     cache.
+
+     Also used by B+ tree files to ensure that deleted pages
+     are removed from the cache so they can be reused safely
+     */
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
