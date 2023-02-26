@@ -67,11 +67,13 @@ public class Tuple implements Serializable {
      * @param f
      *          new value for the field.
      */
-    public void setField(int i, Field f) {
+    public void setField(int i, Field f) throws IndexOutOfBoundsException {
         // some code goes here
 
         if (i >= 0 && i < this.fields.size()) {
             this.fields.set(i, f);
+        } else {
+            throw new IndexOutOfBoundsException();
         }
     }
 
