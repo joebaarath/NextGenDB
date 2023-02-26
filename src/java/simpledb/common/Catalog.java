@@ -110,6 +110,8 @@ public class Catalog {
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
+        System.out.println(idPkeyFieldMap);
+        System.out.println(tableid);
         return idPkeyFieldMap.get(tableid);
     }
 
@@ -120,11 +122,13 @@ public class Catalog {
 
     public String getTableName(int id) {
         // some code goes here
-        for(Map.Entry<String, DbFile> entryForNameFile: nameFileMap.entrySet()){
-            if(entryForNameFile.getValue().getId() == id){
-                return entryForNameFile.getKey();
+//        if(id >= 0) {
+            for (Map.Entry<String, DbFile> entryForNameFile : nameFileMap.entrySet()) {
+                if (entryForNameFile.getValue().getId() == id) {
+                    return entryForNameFile.getKey();
+                }
             }
-        }
+//        }
         return null;
     }
 
