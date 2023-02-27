@@ -205,7 +205,7 @@ public class TupleDescTest extends SimpleDbTestBase {
 
         TupleDesc td = Utility.getTupleDesc(5, prefix);
         Iterator<TupleDesc.TDItem> it = td.iterator();
-        int i = 1;
+        int i = 0;
         while (it.hasNext()) {
             TupleDesc.TDItem tdItem = it.next();
             assertEquals(Type.INT_TYPE, tdItem.fieldType);
@@ -282,7 +282,7 @@ public class TupleDescTest extends SimpleDbTestBase {
         }
         for (int i = 0; i < 5; i++) {
             assertEquals(null, td3.getFieldName(i));
-            assertEquals("test" + (i + 1), td3.getFieldName(i + 5));
+            assertEquals("test" + (i), td3.getFieldName(i + 5));
         }
     }
 
@@ -295,13 +295,16 @@ public class TupleDescTest extends SimpleDbTestBase {
         TupleDesc td2 = Utility.getTupleDesc(5, "test");
         TupleDesc td3 = TupleDesc.merge(td1, td2);
         TupleDesc td4 = TupleDesc.merge(td1, td2);
+        TupleDesc td5 = Utility.getTupleDesc(6);
 
+        assertTrue(td1.equals(td1));
         assertFalse(td1.equals(td2));
         assertFalse(td2.equals(td1));
         assertFalse(td1.equals(td3));
         assertFalse(td3.equals(td1));
         assertFalse(td2.equals(td3));
         assertFalse(td3.equals(td2));
+        assertFalse(td1.equals(td5));
         assertTrue(td3.equals(td4));
         assertTrue(td4.equals(td3));
     }
@@ -331,12 +334,12 @@ public class TupleDescTest extends SimpleDbTestBase {
         TupleDesc td2 = Utility.getTupleDesc(2, "test");
         TupleDesc td3 = TupleDesc.merge(td1, td2);
 
-        String td1Description = String.format("%1$s (%2$s), %3$s (%4$s)", td1.getFieldType(0), td1.getFieldName(0),
+        String td1Description = String.format("%1$s(%2$s),%3$s(%4$s)", td1.getFieldType(0), td1.getFieldName(0),
                 td1.getFieldType(1), td1.getFieldName(1));
-        String td2Description = String.format("%1$s (%2$s), %3$s (%4$s)", td2.getFieldType(0), td2.getFieldName(0),
+        String td2Description = String.format("%1$s(%2$s),%3$s(%4$s)", td2.getFieldType(0), td2.getFieldName(0),
                 td2.getFieldType(1),
                 td2.getFieldName(1));
-        String td3Description = String.format("%1$s (%2$s), %3$s (%4$s), %5$s (%6$s), %7$s (%8$s)", td3.getFieldType(0),
+        String td3Description = String.format("%1$s(%2$s),%3$s(%4$s),%5$s(%6$s),%7$s(%8$s)", td3.getFieldType(0),
                 td3.getFieldName(0), td3.getFieldType(1), td3.getFieldName(1), td3.getFieldType(2), td3.getFieldName(2),
                 td3.getFieldType(3), td3.getFieldName(3));
 
