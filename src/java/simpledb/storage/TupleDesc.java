@@ -223,11 +223,13 @@ public class TupleDesc implements Serializable {
             if (!(anotherTD.numFields() == this.numFields())) {
                 return false;
             }
+
             for (int i = 0; i < numFields(); i++) {
-                if (!this.tdItems.get(i).equals(anotherTD.tdItems.get(i))) {
+                if(!(this.getFieldType(i).equals(anotherTD.getFieldType(i)))){
                     return false;
                 }
             }
+
             return true;
         }
         return false;
