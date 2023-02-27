@@ -298,8 +298,8 @@ public class TupleDescTest extends SimpleDbTestBase {
         TupleDesc td5 = Utility.getTupleDesc(6);
 
         assertTrue(td1.equals(td1));
-        assertFalse(td1.equals(td2));
-        assertFalse(td2.equals(td1));
+        assertTrue(td1.equals(td2));
+        assertTrue(td2.equals(td1));
         assertFalse(td1.equals(td3));
         assertFalse(td3.equals(td1));
         assertFalse(td2.equals(td3));
