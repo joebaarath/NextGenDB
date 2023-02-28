@@ -6,6 +6,7 @@ import simpledb.storage.*;
 import simpledb.systemtest.SimpleDbTestBase;
 import simpledb.systemtest.SystemTestUtil;
 
+import java.io.IOException;
 import java.util.*;
 import org.junit.After;
 import org.junit.Before;
@@ -73,7 +74,7 @@ public class HeapFileReadTest extends SimpleDbTestBase {
      * Unit test for HeapFile.readPage()
      */
     @Test
-    public void readPage() {
+    public void readPage() throws IOException, ClassNotFoundException {
         HeapPageId pid = new HeapPageId(hf.getId(), 0);
         HeapPage page = (HeapPage) hf.readPage(pid);
 
