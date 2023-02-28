@@ -161,7 +161,7 @@ public class LogTest extends SimpleDbTestBase {
     }
 
     @Test public void TestFlushAll()
-            throws IOException, DbException, TransactionAbortedException {
+            throws IOException, DbException, TransactionAbortedException, ClassNotFoundException {
         setup();
 
         // *** Test:

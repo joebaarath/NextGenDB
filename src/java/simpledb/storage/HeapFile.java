@@ -1,5 +1,6 @@
 package simpledb.storage;
 
+import jdk.dynalink.beans.StaticClass;
 import simpledb.common.Database;
 import simpledb.common.DbException;
 import simpledb.common.Debug;
@@ -29,8 +30,30 @@ public class HeapFile implements DbFile {
      *            the file that stores the on-disk backing store for this heap
      *            file.
      */
+
+    // HeapFile to ID
+    public static Map<Integer, HeapFile> heapFileMap;
+
+    File sourceFile;
+    TupleDesc sourceTupleDesc;
+    int pgCount;
     public HeapFile(File f, TupleDesc td) {
         // some code goes here
+        sourceFile = f;
+        sourceTupleDesc = td;
+
+        if (heapFileMap == null){
+            heapFileMap = new HashMap<>();
+        }
+
+        if(heapFileMap.containsKey(sourceFile.getAbsoluteFile().hashCode())){
+            throw new UnsupportedOperationException("File already exists in Heap");
+        }
+
+        pgCount = (int) (f.length() / BufferPool.getPageSize());
+
+        heapFileMap.put(sourceFile.getAbsoluteFile().hashCode(),this);
+
     }
 
     /**
@@ -40,7 +63,7 @@ public class HeapFile implements DbFile {
      */
     public File getFile() {
         // some code goes here
-        return null;
+        return sourceFile;
     }
 
     /**
@@ -54,7 +77,12 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+
+        if(sourceFile == null || !sourceFile.getAbsoluteFile().exists()){
+            throw new UnsupportedOperationException("File does not exists");
+        }
+
+        return sourceFile.getAbsoluteFile().hashCode();
     }
 
     /**
@@ -64,13 +92,37 @@ public class HeapFile implements DbFile {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+
+        if(sourceTupleDesc == null){
+            throw new UnsupportedOperationException("File does not exists");
+        }
+
+        return sourceTupleDesc;
     }
 
     // see DbFile.java for javadocs
-    public Page readPage(PageId pid) {
-        // some code goes here
-        return null;
+    public Page readPage(PageId pid) throws IOException, ClassNotFoundException {
+
+        if(pid.getTableId() != getId()){
+            throw new IllegalArgumentException("ID doesn't match in heepFile");
+        }
+
+        RandomAccessFile file = new RandomAccessFile(sourceFile, "r");
+        byte[] buffer = HeapPage.createEmptyPageData();
+        int pgSize = BufferPool.getPageSize();
+        int position = pid.getPageNumber() * pgSize;
+
+        HeapPage heapPage;
+        try{
+            file.read(buffer, position, buffer.length);
+            heapPage = new HeapPage((HeapPageId) pid, buffer);
+            file.close();
+        }
+        catch (Exception e){
+            throw e;
+        }
+
+        return heapPage;
     }
 
     // see DbFile.java for javadocs
@@ -84,7 +136,7 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return 0;
+        return pgCount;
     }
 
     // see DbFile.java for javadocs
@@ -103,10 +155,77 @@ public class HeapFile implements DbFile {
         // not necessary for lab1
     }
 
+    public class HeapFileIterator implements DbFileIterator {
+        HeapFile heapFile;
+        TransactionId tid;
+        int tableID;
+        HeapPage heapPage;
+        Iterator<Tuple> iterator;
+
+
+        HeapFileIterator(HeapFile heapFile, TransactionId tid){
+            this.tableID = heapFile.getId();
+            this.tid = tid;
+            this.heapFile = heapFile;
+        }
+
+        @Override
+        public void open() throws DbException, TransactionAbortedException {
+            heapPage = (HeapPage) Database.getBufferPool().getPage(tid, new HeapPageId(tableID,0), null);
+            iterator = heapPage.iterator();
+        }
+
+        @Override
+        public boolean hasNext() throws DbException, TransactionAbortedException {
+            try{
+                if(iterator.hasNext()){
+                    return true;
+                }
+                return false;
+
+            }catch (Exception e){
+                return false;
+            }
+        }
+
+        @Override
+        public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+            if(iterator == null){
+                throw new NoSuchElementException();
+            }
+            if(iterator.hasNext()){
+                return iterator.next();
+            }
+            return null;
+        }
+
+        @Override
+        public void rewind() throws DbException, TransactionAbortedException {
+            open();
+        }
+
+        @Override
+        public void close() {
+            heapPage = null;
+            tid = null;
+            iterator = null;
+            heapFile = null;
+        }
+    }
+
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
         // some code goes here
-        return null;
+
+//        should iterate through the tuples of each page in the HeapFile
+//        The iterator must use the `BufferPool.getPage()` method to access pages in the `HeapFile`.
+//        This method loads the page into the buffer pool
+//        and will eventually be used (in a later lab)
+//        to implement locking-based concurrency control and recovery.
+//        Do not load the entire table into memory on the open() call -- this will cause an out of memory error for
+//        very large tables.
+
+        return new HeapFileIterator(this, tid);
     }
 
 }
