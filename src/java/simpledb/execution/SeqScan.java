@@ -11,6 +11,8 @@ import simpledb.storage.TupleDesc;
 
 import java.util.*;
 
+import static org.junit.Assert.assertEquals;
+
 /**
  * SeqScan is an implementation of a sequential scan access method that reads
  * each tuple of a table in no particular order (e.g., as they are laid out on
@@ -36,8 +38,18 @@ public class SeqScan implements OpIterator {
      *            are, but the resulting name can be null.fieldName,
      *            tableAlias.null, or null.null).
      */
+
+    private TransactionId tid;
+    private int tableid;
+    private String tableAlias;
+    private DbFileIterator tupleIterator;
+
     public SeqScan(TransactionId tid, int tableid, String tableAlias) {
         // some code goes here
+        this.tid = tid;
+        this.tableid = tableid;
+        this.tableAlias = tableAlias;
+        this.tupleIterator = Database.getCatalog().getDatabaseFile(tableid).iterator(tid);
     }
 
     /**
@@ -47,7 +59,7 @@ public class SeqScan implements OpIterator {
      * */
     public String getTableName() {
 	// some code goes here
-        return null;
+        return Database.getCatalog().getTableName(this.tableid);
     }
 
     /**
@@ -56,7 +68,7 @@ public class SeqScan implements OpIterator {
     public String getAlias()
     {
         // some code goes here
-        return null;
+        return this.tableAlias;
     }
 
     /**
@@ -73,6 +85,8 @@ public class SeqScan implements OpIterator {
      */
     public void reset(int tableid, String tableAlias) {
         // some code goes here
+        this.tableid = tableid;
+        this.tableAlias = tableAlias;
     }
 
     public SeqScan(TransactionId tid, int tableId) {
@@ -81,6 +95,7 @@ public class SeqScan implements OpIterator {
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
+        this.tupleIterator.open();
     }
 
     /**
@@ -95,26 +110,40 @@ public class SeqScan implements OpIterator {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        TupleDesc original = Database.getCatalog().getTupleDesc(this.tableid);
+        Type[] types = new Type[original.numFields()];
+        String[] names = new String[original.numFields()];
+
+        for (int i = 0; i < original.numFields(); i++) {
+            types[i] = original.getFieldType(i);
+            names[i] = this.tableAlias + "." + original.getFieldName(i);
+        }
+        return new TupleDesc(types, names);
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
         // some code goes here
-        return false;
+        boolean boolNext = this.tupleIterator.hasNext();
+        System.out.println(boolNext);
+        return boolNext;
     }
 
     public Tuple next() throws NoSuchElementException,
             TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+        Tuple nextTuple = this.tupleIterator.next();
+        System.out.println(nextTuple);
+        return nextTuple;
     }
 
     public void close() {
         // some code goes here
+        this.tupleIterator.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // some code goes here
+        this.tupleIterator.rewind();
     }
 }
