@@ -37,22 +37,25 @@ public class HeapFile implements DbFile {
     File sourceFile;
     TupleDesc sourceTupleDesc;
     int pgCount;
+    int heapFileId;
     public HeapFile(File f, TupleDesc td) {
         // some code goes here
-        sourceFile = f;
-        sourceTupleDesc = td;
+        this.sourceFile = f;
+        this.sourceTupleDesc = td;
+        this.heapFileId = this.sourceFile.getAbsoluteFile().hashCode();
 
-        if (heapFileMap == null){
-            heapFileMap = new HashMap<>();
+        if (this.heapFileMap == null){
+            this.heapFileMap = new HashMap<>();
         }
 
-        if(heapFileMap.containsKey(sourceFile.getAbsoluteFile().hashCode())){
+
+        if(this.heapFileMap.containsKey(this.heapFileId)){
             throw new UnsupportedOperationException("File already exists in Heap");
         }
 
-        pgCount = (int) (f.length() / BufferPool.getPageSize());
+        this.pgCount = (int) (this.sourceFile.length() / BufferPool.getPageSize());
 
-        heapFileMap.put(sourceFile.getAbsoluteFile().hashCode(),this);
+        this.heapFileMap.put(this.heapFileId,this);
 
     }
 
@@ -63,7 +66,7 @@ public class HeapFile implements DbFile {
      */
     public File getFile() {
         // some code goes here
-        return sourceFile;
+        return this.sourceFile;
     }
 
     /**
@@ -77,12 +80,10 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-
         if(sourceFile == null || !sourceFile.getAbsoluteFile().exists()){
             throw new UnsupportedOperationException("File does not exists");
         }
-
-        return sourceFile.getAbsoluteFile().hashCode();
+        return this.heapFileId;
     }
 
     /**
@@ -96,30 +97,27 @@ public class HeapFile implements DbFile {
         if(sourceTupleDesc == null){
             throw new UnsupportedOperationException("File does not exists");
         }
-
         return sourceTupleDesc;
     }
 
     // see DbFile.java for javadocs
-    public Page readPage(PageId pid) throws IOException, ClassNotFoundException {
-
-        if(pid.getTableId() != getId()){
-            throw new IllegalArgumentException("ID doesn't match in heepFile");
+    public Page readPage(PageId pid) {
+        if(pid.getTableId() != getId() || pid == null){
+            throw new IllegalArgumentException("ID doesn't match in heapFile");
         }
 
-        RandomAccessFile file = new RandomAccessFile(sourceFile, "r");
-        byte[] buffer = HeapPage.createEmptyPageData();
-        int pgSize = BufferPool.getPageSize();
-        int position = pid.getPageNumber() * pgSize;
+        byte[] buffer = new byte[BufferPool.getPageSize()];
+        int pageNum = pid.getPageNumber();
+        int offset = pageNum * BufferPool.getPageSize();
 
-        HeapPage heapPage;
-        try{
-            file.read(buffer, position, buffer.length);
+        HeapPage heapPage = null;
+        try(RandomAccessFile file = new RandomAccessFile(sourceFile, "r");){
+            file.seek(offset);
+            file.read(buffer, 0, buffer.length);
             heapPage = new HeapPage((HeapPageId) pid, buffer);
-            file.close();
         }
         catch (Exception e){
-            throw e;
+            e.printStackTrace();
         }
 
         return heapPage;
@@ -136,7 +134,7 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return pgCount;
+        return this.pgCount;
     }
 
     // see DbFile.java for javadocs
@@ -154,7 +152,6 @@ public class HeapFile implements DbFile {
         return null;
         // not necessary for lab1
     }
-
     public class HeapFileIterator implements DbFileIterator {
         HeapFile heapFile;
         TransactionId tid;
@@ -227,6 +224,5 @@ public class HeapFile implements DbFile {
 
         return new HeapFileIterator(this, tid);
     }
-
 }
 

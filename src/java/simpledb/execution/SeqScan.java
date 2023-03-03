@@ -124,7 +124,7 @@ public class SeqScan implements OpIterator {
     public boolean hasNext() throws TransactionAbortedException, DbException {
         // some code goes here
         boolean boolNext = this.tupleIterator.hasNext();
-        System.out.println(boolNext);
+//        System.out.println(boolNext);
         return boolNext;
     }
 
@@ -132,7 +132,7 @@ public class SeqScan implements OpIterator {
             TransactionAbortedException, DbException {
         // some code goes here
         Tuple nextTuple = this.tupleIterator.next();
-        System.out.println(nextTuple);
+//        System.out.println(nextTuple);
         return nextTuple;
     }
 
