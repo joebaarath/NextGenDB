@@ -304,7 +304,6 @@ public class HeapPage implements Page {
         int byteNum = i / 8;
         int bitNum = i % 8;
         if (byteNum >= header.length || byteNum < 0) {
-            System.out.println(header.length);
             return false;
         }
         byte byteWithSlot = header[byteNum];

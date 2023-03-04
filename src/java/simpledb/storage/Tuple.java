@@ -98,7 +98,6 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here
-        // System.out.println(this.fields.toString());
         if (fields == null || fields.size() == 0) {
             return "";
         }
