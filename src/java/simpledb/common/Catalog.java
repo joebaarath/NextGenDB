@@ -31,11 +31,13 @@ public class Catalog {
     private HashMap<String, DbFile> nameFileMap;
     private HashMap<Integer, String> idPkeyFieldMap;
     private HashMap<Integer, DbFile> idFileMap;
+    private HashMap<Integer, String> idNameMap;
     public Catalog() {
         // some code goes here
         nameFileMap = new HashMap<String, DbFile>();
         idPkeyFieldMap = new HashMap<Integer, String>();
         idFileMap = new HashMap<Integer, DbFile>();
+        idNameMap = new HashMap<Integer, String>();
     }
 
     /**
@@ -51,6 +53,7 @@ public class Catalog {
         // some code goes here
         // Checking for null breaks it for some reason
         if (!name.equals(null)){
+            idNameMap.put(file.getId(), name);
             nameFileMap.put(name, file);
             idPkeyFieldMap.put(file.getId(), pkeyField);
             idFileMap.put(file.getId(), file);
@@ -120,14 +123,12 @@ public class Catalog {
 
     public String getTableName(int id) {
         // some code goes here
-//        if(id >= 0) {
-            for (Map.Entry<String, DbFile> entryForNameFile : nameFileMap.entrySet()) {
-                if (entryForNameFile.getValue().getId() == id) {
-                    return entryForNameFile.getKey();
-                }
-            }
-//        }
-        return null;
+        try{
+            return idNameMap.get(id);
+        }
+        catch (Exception e){
+            throw e;
+        }
     }
 
     /** Delete all tables from the catalog */
