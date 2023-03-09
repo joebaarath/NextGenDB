@@ -11,6 +11,9 @@ import java.io.Serializable;
 public class Predicate implements Serializable {
 
     private static final long serialVersionUID = 1L;
+    private int field;
+    private Op op;
+    private Field operand;
 
     /** Constants used for return codes in Field.compare */
     public enum Op implements Serializable {
@@ -21,7 +24,7 @@ public class Predicate implements Serializable {
          * convenience.
          * 
          * @param i
-         *            a valid integer Op index
+         *          a valid integer Op index
          */
         public static Op getOp(int i) {
             return values()[i];
@@ -46,48 +49,48 @@ public class Predicate implements Serializable {
         }
 
     }
-    
+
     /**
      * Constructor.
      * 
      * @param field
-     *            field number of passed in tuples to compare against.
+     *                field number of passed in tuples to compare against.
      * @param op
-     *            operation to use for comparison
+     *                operation to use for comparison
      * @param operand
-     *            field value to compare passed in tuples to
+     *                field value to compare passed in tuples to
      */
     public Predicate(int field, Op op, Field operand) {
         // some code goes here
+        this.field = field;
+        this.op = op;
+        this.operand = operand;
     }
 
     /**
      * @return the field number
      */
-    public int getField()
-    {
+    public int getField() {
         // some code goes here
-        return -1;
+        return this.field;
     }
 
     /**
      * @return the operator
      */
-    public Op getOp()
-    {
+    public Op getOp() {
         // some code goes here
-        return null;
+        return this.op;
     }
-    
+
     /**
      * @return the operand
      */
-    public Field getOperand()
-    {
+    public Field getOperand() {
         // some code goes here
-        return null;
+        return this.operand;
     }
-    
+
     /**
      * Compares the field number of t specified in the constructor to the
      * operand field specified in the constructor using the operator specific in
@@ -95,11 +98,14 @@ public class Predicate implements Serializable {
      * method.
      * 
      * @param t
-     *            The tuple to compare against
+     *          The tuple to compare against
      * @return true if the comparison is true, false otherwise.
      */
     public boolean filter(Tuple t) {
         // some code goes here
+        if (t.getField(this.field).compare(this.op, this.operand)) {
+            return true;
+        }
         return false;
     }
 
@@ -109,6 +115,6 @@ public class Predicate implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return "";
+        return String.format("Predicate(field: %d, op: %s, operand: %s)", field, op.toString(), operand.toString());
     }
 }
