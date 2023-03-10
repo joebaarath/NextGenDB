@@ -3,17 +3,13 @@ package simpledb.execution;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Map.Entry;
-
-import simpledb.common.DbException;
 import simpledb.common.Type;
 import simpledb.storage.Field;
 import simpledb.storage.IntField;
 import simpledb.storage.Tuple;
 import simpledb.storage.TupleIterator;
 import simpledb.storage.TupleDesc;
-import simpledb.transaction.TransactionAbortedException;
 
 /**
  * Knows how to compute some aggregate over a set of IntFields.
