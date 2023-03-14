@@ -6,9 +6,9 @@ import simpledb.common.Utility;
 import simpledb.execution.JoinPredicate;
 import simpledb.execution.Predicate;
 import simpledb.systemtest.SimpleDbTestBase;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 import junit.framework.JUnit4TestAdapter;
+
+import static org.junit.Assert.*;
 
 public class JoinPredicateTest extends SimpleDbTestBase {
 
@@ -57,6 +57,15 @@ public class JoinPredicateTest extends SimpleDbTestBase {
       assertTrue(p.filter(Utility.getHeapTuple(i), Utility.getHeapTuple(i)));
       assertTrue(p.filter(Utility.getHeapTuple(i), Utility.getHeapTuple(i + 1)));
     }
+  }
+
+  @Test public void nextGenGetFields() {
+      JoinPredicate p = new JoinPredicate(1,
+              Predicate.Op.EQUALS, 3);
+      System.out.println(p.getField1());
+      System.out.println(p.getField2());
+      assertEquals(p.getField1(), 1);
+      assertEquals(p.getField2(), 3);
   }
 
   /**
