@@ -102,6 +102,9 @@ public class Tuple implements Serializable {
             return "";
         }
         String finalResult = fields.get(0).toString();
+        if (fields.size() == 1) {
+            return finalResult;
+        }
         for (int i = 1; i < fields.size(); i++) {
             finalResult = String.join(" ", finalResult, fields.get(i).toString());
         }
