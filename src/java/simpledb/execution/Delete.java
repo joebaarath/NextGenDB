@@ -29,25 +29,48 @@ public class Delete extends Operator {
      * @param child
      *            The child operator from which to read tuples for deletion
      */
+
+    TransactionId tid;
+    OpIterator child;
+    TupleDesc tupleDesc;
+    boolean isFetched = false;
+    int count = 0;
     public Delete(TransactionId t, OpIterator child) {
         // some code goes here
+
+        this.tid = t;
+        this.child = child;
+
+//        These operators return the number of affected tuples.
+//        This is implemented by returning a single tuple
+//        with one integer field, containing the count.
+
+        tupleDesc = new TupleDesc(new Type[]{Type.INT_TYPE});
+        isFetched = false;
     }
 
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return tupleDesc;
     }
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
+        super.open();
+        this.child.open();
     }
 
     public void close() {
         // some code goes here
+        super.close();
+        this.child.close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // some code goes here
+        this.child.rewind();
+        this.close();
+        this.open();
     }
 
     /**
@@ -61,18 +84,40 @@ public class Delete extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+        if(isFetched == true){
+            return null;
+        }
+        else{
+            isFetched=true;
+        }
+
+        //reset count
+        count = 0;
+        while (child.hasNext()){
+            try {
+                Tuple tupleToDelete = this.child.next();
+                Database.getBufferPool().deleteTuple(this.tid, tupleToDelete);
+                count += 1;
+            } catch (Exception e) {
+                throw new DbException("Deletion Operation failed during insertTuple");
+            }
+
+        }
+        Tuple tupleWithCountValue = new Tuple(tupleDesc);
+        tupleWithCountValue.setField(0, new IntField(count));
+        return tupleWithCountValue;
     }
 
     @Override
     public OpIterator[] getChildren() {
         // some code goes here
-        return null;
+        return new OpIterator[] { this.child };
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
         // some code goes here
+        this.child = children[0];
     }
 
 }
