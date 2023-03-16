@@ -90,6 +90,28 @@ public class HeapFileWriteTest extends TestUtil.CreateHeapFile {
         it.close();
     }
 
+    @Test
+    public void nextGenWritePage() throws Exception {
+        // Create HeapFile/Table
+        HeapFile smallFile = SystemTestUtil.createRandomHeapFile(2, 3, null,
+                null);
+        // Grab table id
+        int tableId = smallFile.getId();
+        int tdSize = 8;
+        int numTuples = (BufferPool.getPageSize()*8) / (tdSize * 8 + 1);
+        int headerSize = (int) Math.ceil(numTuples / 8.0);
+        // Leave these as all zeroes so this entire page is empty
+        byte[] empty = new byte[numTuples * 8 + headerSize];
+        byte[] full = new byte[numTuples * 8 + headerSize];
+        // Since every bit is marked as used, every tuple should be used,
+        // and all should be set to -1.
+        Arrays.fill(full, (byte) 0xFFFFFFFF);
+
+        smallFile.writePage(new HeapPage(new HeapPageId(tableId, 0), empty));
+        smallFile.writePage(new HeapPage(new HeapPageId(tableId, 1), empty));
+        smallFile.writePage(new HeapPage(new HeapPageId(tableId, 2), full));
+        assertEquals(smallFile.numPages(), 3);
+    }
     /**
      * JUnit suite target
      */
