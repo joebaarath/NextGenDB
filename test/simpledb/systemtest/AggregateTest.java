@@ -121,6 +121,14 @@ public class AggregateTest extends SimpleDbTestBase {
         doAggregate(Aggregator.Op.AVG, Aggregator.NO_GROUPING);
     }
 
+    @Test public void nextGenMultipleOp()
+            throws IOException, DbException, TransactionAbortedException {
+        doAggregate(Aggregator.Op.MAX, 0);
+        doAggregate(Aggregator.Op.MIN, 0);
+        doAggregate(Aggregator.Op.AVG, Aggregator.NO_GROUPING);
+        doAggregate(Aggregator.Op.COUNT, 0);
+    }
+
     /** Make test compatible with older version of ant. */
     public static junit.framework.Test suite() {
         return new junit.framework.JUnit4TestAdapter(AggregateTest.class);

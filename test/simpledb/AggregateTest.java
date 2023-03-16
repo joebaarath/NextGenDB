@@ -169,6 +169,13 @@ public class AggregateTest extends SimpleDbTestBase {
     TestUtil.matchAllTuples(avg, op);
   }
 
+  @Test public void nextGenCountAggregate() throws Exception {
+    Aggregate op = new Aggregate(scan1, 1, 0,
+            Aggregator.Op.COUNT);
+    op.open();
+    count.open();
+    TestUtil.matchAllTuples(count, op);
+  }
   /**
    * Unit test for Aggregate.getNext() using a max aggregate
    */
