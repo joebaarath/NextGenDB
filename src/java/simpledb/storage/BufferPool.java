@@ -158,6 +158,24 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+
+//        These methods should call the appropriate methods in the HeapFile
+//        that belong to the table being modified
+//        (this extra level of indirection is needed to support
+//        other types of files — like indices — in the future).
+
+        HeapFile heapFile = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
+        List<Page> insertedPages = heapFile.insertTuple(tid,t);
+        for (Page page: insertedPages) {
+            page.markDirty(true, tid);
+
+            //todo: add evict condition
+
+			// update Map with the correct page
+            this.pidPageMap.remove(page.getId());
+            this.pidPageMap.put(page.getId(), page);
+        }
+
     }
 
     /**
@@ -177,6 +195,19 @@ public class BufferPool {
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+
+        int tableId = t.getRecordId().getPageId().getTableId();
+        HeapFile heapFile = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
+        List<Page> deletedPages = heapFile.deleteTuple(tid,t);
+        for (Page page: deletedPages) {
+            page.markDirty(true, tid);
+
+            //todo: add evictPage() condition
+
+			// update Map with the correct page
+            this.pidPageMap.remove(page.getId());
+            this.pidPageMap.put(page.getId(), page);
+        }
     }
 
     /**
