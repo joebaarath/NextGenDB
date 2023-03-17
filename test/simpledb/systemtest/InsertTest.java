@@ -77,6 +77,12 @@ public class InsertTest extends SimpleDbTestBase {
         validateInsert(1, 1, 1);
     }
 
+    @Test public void nextGenTestMultiple()
+            throws IOException, DbException, TransactionAbortedException {
+        validateInsert(3, 3, 2);
+        validateInsert(3, 3, 0);
+        validateInsert(3, 0, 2);
+    }
     /** Make test compatible with older version of ant. */
     public static junit.framework.Test suite() {
         return new junit.framework.JUnit4TestAdapter(InsertTest.class);
