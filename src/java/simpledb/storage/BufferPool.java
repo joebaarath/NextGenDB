@@ -37,7 +37,8 @@ public class BufferPool {
 
     int numPages;
 
-    private HashMap<PageId, Page> pidPageMap;
+    private HashMap<PageId, LRUHelper> pidLRUMap;
+
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -49,7 +50,7 @@ public class BufferPool {
         this.numPages = numPages;
 
         // Create an hashmap with the size of max no. of pages
-        pidPageMap = new HashMap<>(this.numPages);
+        pidLRUMap = new HashMap<>(this.numPages);
     }
 
     public static int getPageSize() {
@@ -84,14 +85,32 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
-        if (pidPageMap.containsKey(pid)) {
-            return pidPageMap.get(pid);
+
+        if (pidLRUMap.containsKey(pid)) {
+
+            // increment LRU pin count
+            LRUHelper frame = pidLRUMap.get(pid);
+            if(frame != null){
+                frame.pinCount += 1;
+            }
+            LRUUnpin(pid);
+
+            return pidLRUMap.get(pid).page;
         } else {
             HeapFile fileToRead = (HeapFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
             HeapPage pageToRead = (HeapPage) fileToRead.readPage(pid);
-            if (pidPageMap.size() < numPages) {
-                pidPageMap.put(pid, pageToRead);
+
+            if (pidLRUMap.size() >= numPages) {
+                evictPage();
             }
+
+            // keep track of pins
+            if(pidLRUMap.get(pid) == null){
+                LRUHelper myLRU = new LRUHelper(pageToRead,1,LRUHelper.incrementLatestUsedCount());
+                pidLRUMap.put(pid,myLRU);
+            }
+            LRUUnpin(pid);
+
             return pageToRead;
         }
     }
@@ -169,11 +188,22 @@ public class BufferPool {
         for (Page page: insertedPages) {
             page.markDirty(true, tid);
 
-            //todo: add evict condition
+            if (!pidLRUMap.containsKey(page.getId())
+                    && pidLRUMap.size() >= numPages) {
+                evictPage();
+            }
 
-			// update Map with the correct page
-            this.pidPageMap.remove(page.getId());
-            this.pidPageMap.put(page.getId(), page);
+            // update page
+            LRUHelper frame = pidLRUMap.get(page.getId());
+            if(frame == null){
+                frame = new LRUHelper(page,1,LRUHelper.incrementLatestUsedCount());
+            }
+            else{
+                frame.pinCount += 1;
+                frame.page = page;
+            }
+            this.pidLRUMap.put(page.getId(), frame);
+            LRUUnpin(page.getId());
         }
 
     }
@@ -202,11 +232,17 @@ public class BufferPool {
         for (Page page: deletedPages) {
             page.markDirty(true, tid);
 
-            //todo: add evictPage() condition
-
-			// update Map with the correct page
-            this.pidPageMap.remove(page.getId());
-            this.pidPageMap.put(page.getId(), page);
+            // update page
+            LRUHelper frame = pidLRUMap.get(page.getId());
+            if(frame == null){
+                frame = new LRUHelper(page,1,LRUHelper.incrementLatestUsedCount());
+            }
+            else{
+                frame.pinCount += 1;
+                frame.page = page;
+            }
+            this.pidLRUMap.put(page.getId(), frame);
+            LRUUnpin(page.getId());
         }
     }
 
@@ -218,6 +254,24 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
+
+        //  Because of the way we have implemented ScanTest.cacheTest,
+        //  you will need to ensure that your flushPage
+        //  and flushAllPages methods do no evict pages
+        //  from the buffer pool to properly pass this test.
+
+        //  flushAllPages should call flushPage on all pages in the BufferPool
+        for (PageId pid : pidLRUMap.keySet()) {
+            try{
+                if(pidLRUMap.get(pid).page.isDirty() != null){
+                    flushPage(pid);
+                }
+            }
+            catch (Exception e){
+                throw new IOException("Failed to flush page with PageID with tableId: " + pid.getTableId() + " and pgNo of: " + pid.getPageNumber() );
+            }
+        }
+
 
     }
 
@@ -232,6 +286,14 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
+
+        // implement discardPage() to remove a page from the buffer pool without flushing it to disk.
+        // We will not test discardPage() in this lab, but it will be necessary for
+        // future labs.
+        if(pidLRUMap.get(pid) != null){
+            pidLRUMap.remove(pid);
+        }
+
     }
 
     /**
@@ -241,6 +303,22 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+
+        // flushPage should write any dirty page to disk
+        // and mark it as not dirty,
+        // while leaving it in the BufferPool.
+        try{
+            Page pg = pidLRUMap.get(pid).page;
+            if(pg.isDirty() != null){
+                DbFile dbFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                dbFile.writePage(pg);
+                pg.markDirty(true,null);
+            }
+        }
+        catch (Exception e){
+            throw new IOException("Exception during flushing of page with pageid with table id:"+pid.getTableId() + " and pageNum: "+ pid.getPageNumber());
+        }
+
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -257,6 +335,89 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
+
+        // The only method which should remove page
+        // from the buffer pool is evictPage,
+        // which should call flushPage on any dirty page it evicts.
+
+        //  this test works by creating a BufferPool with 16 pages
+        //  (NOTE: while DEFAULT_PAGES is 50, we are initializing the
+        //  BufferPool with less!), scanning a file with many more
+        //  than 16 pages, and seeing if the memory usage of the JVM
+        //  increases by more than 5 MB
+
+        try{
+            if (pidLRUMap.size() == 0){
+                throw new Exception("unexpected error during eviction with pidLRUMap size being 0");
+            }
+
+            PageId oldestPid = null;
+            int oldestLastUsed = Integer.MAX_VALUE;
+            for (PageId pid : pidLRUMap.keySet()) {
+                LRUHelper frame = pidLRUMap.get(pid);
+                if(     frame.pinCount == 0 &&
+                        frame.lastUsed < oldestLastUsed){
+                    oldestLastUsed = frame.lastUsed;
+                    oldestPid = pid;
+                }
+            }
+
+            if(oldestPid == null){
+                throw new DbException("No available frames in buffer pool with pinCount = 0 to evict.");
+            }
+
+            Page pg = pidLRUMap.get(oldestPid).page;
+
+            if(pg.isDirty() != null){
+                this.flushPage(pg.getId());
+            }
+
+            pidLRUMap.remove(pg.getId());
+
+        }catch (Exception e){
+            throw new DbException("Could not evict page");
+        }
+
+
+
     }
 
+    private void LRUUnpin(PageId pid){
+
+        // If page is not in the pool,
+        // do nothing Else,
+        // decrease the corresponding pincount
+        // update the last updated if pin count = 0
+        LRUHelper frame = pidLRUMap.get(pid);
+        if(frame != null){
+            if(frame.pinCount > 0){
+                frame.pinCount -= 1;
+            }
+            if(frame.pinCount == 0){
+                frame.lastUsed = LRUHelper.incrementLatestUsedCount();
+            }
+        }
+
+    }
+
+}
+
+class LRUHelper {
+    int pinCount = 0;
+    int lastUsed = 0;
+    static int latestUsedCount = 0;
+    Page page;
+
+    LRUHelper(Page _page, int _pinCount, int _lastUsed)
+    {
+        page = _page;
+        pinCount = _pinCount;
+        lastUsed = _lastUsed;
+    }
+
+    static int incrementLatestUsedCount()
+    {
+        latestUsedCount +=1;
+        return latestUsedCount;
+    }
 }

@@ -280,7 +280,7 @@ public class HeapPage implements Page {
         // not necessary for lab1
 
         if ( t.getTupleDesc().equals(td) ){
-            //Find next available slot
+            // find next available slot
             for (int i = 0; i < getNumTuples() ; i++) {
                 if(!isSlotUsed(i)){
                     tuples[i] = t;
