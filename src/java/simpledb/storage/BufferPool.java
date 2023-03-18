@@ -93,7 +93,6 @@ public class BufferPool {
             if(frame != null){
                 frame.pinCount += 1;
             }
-            LRUUnpin(pid);
 
             return pidLRUMap.get(pid).page;
         } else {
@@ -109,7 +108,6 @@ public class BufferPool {
                 LRUHelper myLRU = new LRUHelper(pageToRead,1,LRUHelper.incrementLatestUsedCount());
                 pidLRUMap.put(pid,myLRU);
             }
-            LRUUnpin(pid);
 
             return pageToRead;
         }
@@ -235,7 +233,7 @@ public class BufferPool {
             // update page
             LRUHelper frame = pidLRUMap.get(page.getId());
             if(frame == null){
-                frame = new LRUHelper(page,1,LRUHelper.incrementLatestUsedCount());
+                throw new DbException("Page of deleteTuple was not been loaded into LRUHelper frame. Page may not have been pinned during getPage or erroneously unpinned earlier.");
             }
             else{
                 frame.pinCount += 1;
@@ -367,11 +365,9 @@ public class BufferPool {
             }
 
             Page pg = pidLRUMap.get(oldestPid).page;
-
             if(pg.isDirty() != null){
                 this.flushPage(pg.getId());
             }
-
             pidLRUMap.remove(pg.getId());
 
         }catch (Exception e){
@@ -382,7 +378,7 @@ public class BufferPool {
 
     }
 
-    private void LRUUnpin(PageId pid){
+    public void LRUUnpin(PageId pid){
 
         // If page is not in the pool,
         // do nothing Else,
