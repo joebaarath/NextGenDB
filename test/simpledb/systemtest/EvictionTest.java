@@ -50,9 +50,9 @@ public class EvictionTest extends SimpleDbTestBase {
 
     @Test public void nextGenTestMore() throws IOException, DbException, TransactionAbortedException {
         // Since above uses 2mb as a judge and the memory limit is 5mb, and 2mb is 2 * 1024 * 1024,
-        // this should be about 1 mb.
+        // this should be about 50 mb.
         System.out.println("EvictionTest creating large table");
-        HeapFile f = SystemTestUtil.createRandomHeapFile(2, 2*1024*512, null, null);
+        HeapFile f = SystemTestUtil.createRandomHeapFile(2, 50*1024*1024, null, null);
         System.out.println("EvictionTest scanning large table");
         Database.resetBufferPool(BUFFER_PAGES);
         long beginMem = SystemTestUtil.getMemoryFootprint();
