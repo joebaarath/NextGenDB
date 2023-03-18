@@ -64,16 +64,11 @@ public class StringAggregator implements Aggregator {
         } else {
             groupByField = null;
         }
-        // check if the value of afield is null
-        if (((StringField) tup.getField(afield)).getValue() == null) {
-            // do not increase the count
-            Integer currentCount = this.groupByFieldToCount.getOrDefault(groupByField, 0);
-            this.groupByFieldToCount.put(groupByField, currentCount);
-        } else {
-            // increase the count by 1
-            Integer currentCount = this.groupByFieldToCount.getOrDefault(groupByField, 0);
-            this.groupByFieldToCount.put(groupByField, currentCount + 1);
-        }
+
+        // increase the count by 1
+        Integer currentCount = this.groupByFieldToCount.getOrDefault(groupByField, 0);
+        this.groupByFieldToCount.put(groupByField, currentCount + 1);
+
         return;
     }
 
