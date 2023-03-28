@@ -51,6 +51,7 @@ public class BufferPool {
 
         // Create an hashmap with the size of max no. of pages
         pidLRUMap = new HashMap<>(this.numPages);
+//        this.lockManager = LockManager.getInstance();
         this.lockManager = new LockManager();
     }
 

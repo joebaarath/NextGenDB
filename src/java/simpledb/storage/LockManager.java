@@ -12,12 +12,19 @@ public class LockManager {
 
     // To implement a simple timeout policy
     // Timeout is 1 second
+//    private static LockManager lockManager = null;
     public static final long TIMEOUT = 1000;
     private Map<PageId, ArrayList<Lock>> lockMap;
     public LockManager(){
         lockMap = new HashMap<PageId, ArrayList<Lock>>();
     }
 
+//    public static LockManager getInstance(){
+//        if(lockManager == null){
+//            lockManager = new LockManager();
+//        }
+//        return lockManager;
+//    }
     public synchronized boolean availableLock(PageId lockedPID, TransactionId lockedTID, boolean isExclusive){
         ArrayList<Lock> lockEntries = lockMap.get(lockedPID);
 
@@ -130,20 +137,20 @@ public class LockManager {
     // For transactionComplete
     // Release all locks for a particular transaction
     public void releaseAllLocks(TransactionId tid){
-//        for(PageId pid: lockMap.keySet()){
-//            ArrayList<Lock> lockEntries = lockMap.get(pid);
-//
-//            HashSet<Lock> toRemove = new HashSet<Lock>();
-//            for(Lock lockToRelease: lockEntries){
-//                if(lockToRelease.tid.equals(tid)){
-//                    toRemove.add(lockToRelease);
-//                }
-//            }
-//
-//            for(Lock lockToRelease: toRemove){
-//                lockEntries.remove(lockToRelease);
-//            }
-//        }
+        for(PageId pid: lockMap.keySet()){
+            ArrayList<Lock> lockEntries = lockMap.get(pid);
+
+            HashSet<Lock> toRemove = new HashSet<Lock>();
+            for(Lock lockToRelease: lockEntries){
+                if(lockToRelease.tid.equals(tid)){
+                    toRemove.add(lockToRelease);
+                }
+            }
+
+            for(Lock lockToRelease: toRemove){
+                lockEntries.remove(lockToRelease);
+            }
+        }
     }
 
     // For holdLocks
@@ -170,6 +177,4 @@ public class LockManager {
             this.isGranted = isGranted;
         }
     }
-
-
 }
