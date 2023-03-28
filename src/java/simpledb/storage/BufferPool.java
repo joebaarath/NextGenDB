@@ -41,9 +41,8 @@ public class BufferPool {
     int numPages;
 
     private HashMap<PageId, LRUHelper> pidLRUMap;
-
+    private LockManager lockManager;
     private Boolean steal = false;
-
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -55,6 +54,8 @@ public class BufferPool {
 
         // Create an hashmap with the size of max no. of pages
         pidLRUMap = new HashMap<>(this.numPages);
+//        this.lockManager = LockManager.getInstance();
+        this.lockManager = new LockManager();
     }
 
     public static int getPageSize() {
@@ -89,6 +90,12 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
+        if(perm.equals(Permissions.READ_WRITE)){
+            lockManager.getLock(pid, tid, true);
+        }
+        else{
+            lockManager.getLock(pid, tid, false);
+        }
 
         if (pidLRUMap.containsKey(pid)) {
 
@@ -129,6 +136,7 @@ public class BufferPool {
     public void unsafeReleasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
+        lockManager.releaseLock(tid, pid);
     }
 
     /**
@@ -145,7 +153,7 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        return false;
+        return lockManager.holdsLock(tid, p);
     }
 
     /**
