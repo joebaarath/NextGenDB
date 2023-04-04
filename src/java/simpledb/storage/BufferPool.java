@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -43,6 +44,7 @@ public class BufferPool {
     private HashMap<PageId, LRUHelper> pidLRUMap;
     private LockManager lockManager;
     private Boolean steal = false;
+
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -54,7 +56,7 @@ public class BufferPool {
 
         // Create an hashmap with the size of max no. of pages
         pidLRUMap = new HashMap<>(this.numPages);
-//        this.lockManager = LockManager.getInstance();
+        // this.lockManager = LockManager.getInstance();
         this.lockManager = new LockManager();
     }
 
@@ -90,10 +92,9 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
-        if(perm.equals(Permissions.READ_WRITE)){
+        if (perm.equals(Permissions.READ_WRITE)) {
             lockManager.getLock(pid, tid, true);
-        }
-        else{
+        } else {
             lockManager.getLock(pid, tid, false);
         }
 
@@ -146,7 +147,7 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid) {
         // some code goes here
-        // not necessary for lab1|lab2
+        this.transactionComplete(tid, true);
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
@@ -165,7 +166,22 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid, boolean commit) {
         // some code goes here
-        // not necessary for lab1|lab2
+        // no need to do anything if the the transaction is not holding onto any pages
+        if (this.lockManager.getPagesUnderTransaction(tid) == null) {
+            return;
+        }
+        Set<PageId> pageIds = this.lockManager.getPagesUnderTransaction(tid);
+        if (commit) {
+            try {
+                flushPages(tid);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            for (PageId pageId : pageIds)
+                this.discardPage(pageId);
+        }
+        this.lockManager.releaseAllLocks(tid);
     }
 
     /**
@@ -338,6 +354,18 @@ public class BufferPool {
     public synchronized void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        // get the list of pages of the transaction
+        // flush each page
+
+        for (PageId pid : lockManager.getPagesUnderTransaction(tid)) {
+            try {
+                flushPage(pid);
+
+            } catch (Exception e) {
+                throw new IOException("Failed to flush page with PageID with tableId: " + pid.getTableId()
+                        + " and pgNo of: " + pid.getPageNumber());
+            }
+        }
     }
 
     /**
@@ -395,7 +423,7 @@ public class BufferPool {
             int currentPage = 0;
 
             // implement no steal
-            if (pg.isDirty() == null) {
+            if (pg.isDirty() == null && pidLRUMap.get(pg.getId()).pinCount == 0) {
                 pidLRUMap.remove(pg.getId());
             } else {
                 // find a new page to evict
@@ -403,12 +431,13 @@ public class BufferPool {
                 while (currentPage < pids.size()) {
                     PageId pid = pids.get(currentPage);
                     Page page = pidLRUMap.get(pid).page;
-                    if (page.isDirty() == null) {
+                    if (page.isDirty() == null && pidLRUMap.get(page.getId()).pinCount == 0) {
                         pidLRUMap.remove(page.getId());
                         break;
                     }
                     currentPage++;
                 }
+                throw new DbException("No available frames in buffer pool with pinCount = 0 to evict.");
 
             }
             // if (pg.isDirty() != null) {
