@@ -1,9 +1,8 @@
 package simpledb;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import junit.framework.JUnit4TestAdapter;
 import simpledb.common.Database;
 import simpledb.common.Permissions;
@@ -13,10 +12,15 @@ import simpledb.storage.HeapPageId;
 import simpledb.storage.PageId;
 import simpledb.transaction.TransactionId;
 
+import static org.junit.Assert.*;
+
 public class LockingTest extends TestUtil.CreateHeapFile {
-  private PageId p0;
+    private PageId p0;
     private PageId p1;
+    private PageId p4;
+    private PageId p3;
     private TransactionId tid1, tid2;
+    private TransactionId tid3, tid4;
 
   /** Time to wait before checking the state of lock contention, in ms */
   private static final int TIMEOUT = 100;
@@ -45,15 +49,21 @@ public class LockingTest extends TestUtil.CreateHeapFile {
 
     this.p0 = new HeapPageId(empty.getId(), 0);
     this.p1 = new HeapPageId(empty.getId(), 1);
-      PageId p2 = new HeapPageId(empty.getId(), 2);
+    this.p3 = new HeapPageId(empty.getId(), 3);
+    this.p4 = new HeapPageId(empty.getId(), 4);
+    PageId p2 = new HeapPageId(empty.getId(), 2);
     this.tid1 = new TransactionId();
     this.tid2 = new TransactionId();
+    this.tid3 = new TransactionId();
+    this.tid4 = new TransactionId();
 
     // forget about locks associated to tid, so they don't conflict with
     // test cases
     bp.getPage(tid, p0, Permissions.READ_WRITE).markDirty(true, tid);
     bp.getPage(tid, p1, Permissions.READ_WRITE).markDirty(true, tid);
     bp.getPage(tid, p2, Permissions.READ_WRITE).markDirty(true, tid);
+    bp.getPage(tid, p3, Permissions.READ_WRITE).markDirty(true, tid);
+    bp.getPage(tid, p4, Permissions.READ_WRITE).markDirty(true, tid);
     bp.flushAllPages();
     bp = Database.resetBufferPool(BufferPool.DEFAULT_PAGES);
   }
@@ -130,6 +140,36 @@ public class LockingTest extends TestUtil.CreateHeapFile {
                    tid2, p0, Permissions.READ_ONLY, false);
   }
 
+  /**
+   * Unit test for BufferPool.getPage() assuming locking.
+   * Acquires a write lock and a read lock on the same page, in that order.
+   */
+  @Test public void nextGenAcquireWriteWriteLocksOnSamePage() throws Exception {
+    metaLockTester(tid1, p0, Permissions.READ_WRITE,
+            tid2, p0, Permissions.READ_WRITE, false);
+  }
+
+  /**
+   * Checks if invalid page release, does an error get thrown
+   */
+  @Test public void nextGenCatchIllegalRelease() throws Exception {
+    bp.getPage(tid3, p3, Permissions.READ_WRITE);
+    Assert.assertTrue(bp.holdsLock(tid3, p3));
+    assertThrows(NullPointerException.class, () -> bp.unsafeReleasePage(tid3, p4));
+  }
+
+  /**
+   * Checks if invalid page release, does an error get thrown
+   */
+  @Test public void nextGenCatchIllegalRelease2() throws Exception {
+    bp.getPage(tid3, p4, Permissions.READ_WRITE);
+    Assert.assertTrue(bp.holdsLock(tid3, p4));
+    Assert.assertFalse(bp.holdsLock(tid4, p4));
+    bp.unsafeReleasePage(tid4, p4);
+    Assert.assertFalse(bp.holdsLock(tid4, p4));
+    Assert.assertTrue(bp.holdsLock(tid3, p4));
+  }
+  
   /**
    * Unit test for BufferPool.getPage() assuming locking.
    * Acquires a read lock and a write lock on different pages.

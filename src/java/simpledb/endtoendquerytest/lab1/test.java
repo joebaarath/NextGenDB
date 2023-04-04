@@ -1,4 +1,4 @@
-package simpledb;
+package simpledb.endtoendquerytest.lab1;
 import java.io.*;
 import simpledb.SimpleDb;
 import simpledb.common.*;
