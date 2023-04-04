@@ -423,7 +423,7 @@ public class BufferPool {
             int currentPage = 0;
 
             // implement no steal
-            if (pg.isDirty() == null) {
+            if (pg.isDirty() == null && pidLRUMap.get(pg.getId()).pinCount == 0) {
                 pidLRUMap.remove(pg.getId());
             } else {
                 // find a new page to evict
@@ -431,12 +431,13 @@ public class BufferPool {
                 while (currentPage < pids.size()) {
                     PageId pid = pids.get(currentPage);
                     Page page = pidLRUMap.get(pid).page;
-                    if (page.isDirty() == null) {
+                    if (page.isDirty() == null && pidLRUMap.get(page.getId()).pinCount == 0) {
                         pidLRUMap.remove(page.getId());
                         break;
                     }
                     currentPage++;
                 }
+                throw new DbException("No available frames in buffer pool with pinCount = 0 to evict.");
 
             }
             // if (pg.isDirty() != null) {
