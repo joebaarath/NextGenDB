@@ -9,6 +9,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 
@@ -253,6 +254,84 @@ public class TransactionTest extends SimpleDbTestBase {
             fail("Expected scan to run out of available buffer pages");
         } catch (DbException ignored) {}
         t.commit();
+    }
+
+    @Test public void nextGenTestAllDirtyFails()
+            throws IOException, DbException, TransactionAbortedException {
+        // Allocate a file with ~10 pages of data
+        HeapFile f = SystemTestUtil.createRandomHeapFile(2, 512*10, null, null);
+        Database.resetBufferPool(2);
+
+        // BEGIN TRANSACTION
+        Transaction t = new Transaction();
+        t.start();
+
+        // Insert a new row
+        AbortEvictionTest.insertRow(f, t);
+        AbortEvictionTest.findMagicTuple(f, t);
+        AbortEvictionTest.nextGenDeleteRow(f,t);
+
+        // Scanning the table must fail because it can't evict the dirty page
+        try {
+            AbortEvictionTest.findMagicTuple(f, t);
+            fail("Expected scan to run out of available buffer pages");
+        } catch (DbException ignored) {}
+        t.commit();
+    }
+
+    @Test
+    public void nextGenTestConcurrentLocking() throws InterruptedException, IOException, TransactionAbortedException, DbException {
+        HeapFile f = SystemTestUtil.createRandomHeapFile(2, 512*10, null, null);
+        Database.resetBufferPool(50);
+
+        // 2 transactions that will compete for lock
+        Transaction t1 = new Transaction();
+        Transaction t2 = new Transaction();
+
+        AtomicReference<Boolean> transaction1Failed = new AtomicReference<>(false);
+        AtomicReference<Boolean> transaction2Failed = new AtomicReference<>(false);
+
+        // Start both transactions in separate threads
+        Thread thread1 = new Thread(() -> {
+            try {
+                t1.start();
+                AbortEvictionTest.insertRow(f, t1);
+                t1.commit();
+                boolean found= AbortEvictionTest.findMagicTuple(f, t1);
+                assertTrue(found);
+            } catch (TransactionAbortedException | DbException | IOException e) {
+                e.printStackTrace();
+                transaction1Failed.set(true);
+            }
+        });
+        Thread thread2 = new Thread(() -> {
+            try {
+                t2.start();
+                AbortEvictionTest.insertRow2(f, t2);
+                t2.commit();
+                boolean found= AbortEvictionTest.findMagicTuple2(f, t2);
+                assertTrue(found);
+            } catch (TransactionAbortedException | DbException | IOException e) {
+                e.printStackTrace();
+                transaction2Failed.set(true);
+            }
+        });
+
+        thread1.start();
+        thread2.start();
+
+        // Wait for both transactions to complete
+        thread1.join();
+        thread2.join();
+
+        if(transaction1Failed.get() == true){
+            fail("Transaction 1 threw error");
+        }
+
+        if(transaction2Failed.get() == true){
+            fail("Transaction 2 threw error");
+        }
+
     }
 
     /** Make test compatible with older version of ant. */

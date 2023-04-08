@@ -99,7 +99,7 @@ public class Delete extends Operator {
                 Database.getBufferPool().deleteTuple(this.tid, tupleToDelete);
                 count += 1;
             } catch (Exception e) {
-                throw new DbException("Deletion Operation failed during insertTuple");
+                throw new DbException("Deletion Operation failed.");
             }
 
         }
