@@ -3,11 +3,14 @@ package simpledb;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+
 import junit.framework.JUnit4TestAdapter;
 import simpledb.common.Database;
 import simpledb.common.Permissions;
 import simpledb.common.Utility;
 import simpledb.storage.*;
+import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
 import java.util.Iterator;
@@ -66,6 +69,37 @@ public class TransactionTest extends TestUtil.CreateHeapFile {
     bp.getPage(tid2, p0, Permissions.READ_WRITE);
     bp.getPage(tid2, p0, Permissions.READ_WRITE);
   }
+
+  /**
+   * Unit test for BufferPool.transactionComplete().
+   * Try to acquire locks that would conflict if old locks aren't released
+   * during transactionComplete().
+   */
+  @Test public void nextGenAttemptTransactionTwice1() throws Exception {
+    bp.getPage(tid1, p0, Permissions.READ_WRITE);
+    bp.getPage(tid1, p1, Permissions.READ_ONLY);
+    bp.transactionComplete(tid1, true);
+
+    bp.getPage(tid2, p0, Permissions.READ_WRITE);
+    bp.getPage(tid2, p1, Permissions.READ_WRITE);
+  }
+
+  /**
+   * Unit test for BufferPool.transactionComplete().
+   * Try to acquire locks that would conflict if old locks aren't released
+   * during transactionComplete().
+   */
+  @Test public void nextGenAttemptTransactionTwice2() throws Exception {
+    bp.getPage(tid1, p0, Permissions.READ_WRITE);
+    bp.transactionComplete(tid1, true);
+    bp.getPage(tid1, p1, Permissions.READ_WRITE);
+
+    bp.getPage(tid2, p0, Permissions.READ_WRITE);
+    assertThrows(TransactionAbortedException.class, () -> {
+      bp.getPage(tid2, p1, Permissions.READ_WRITE);
+    });
+  }
+
 
   /**
    * Common unit test code for BufferPool.transactionComplete() covering
