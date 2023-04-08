@@ -7,13 +7,9 @@ import simpledb.transaction.TransactionId;
 import java.io.*;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -92,9 +88,9 @@ public class BufferPool {
             throws TransactionAbortedException, DbException {
         // some code goes here
         if (perm.equals(Permissions.READ_WRITE)) {
-            lockManager.acquireWriteLock(tid, pid);
+            lockManager.getWriteLock(tid, pid);
         } else {
-            lockManager.acquireReadLock(tid, pid);
+            lockManager.getReadLock(tid, pid);
         }
 
         if (pidLRUMap.containsKey(pid)) {
@@ -153,7 +149,7 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        return lockManager.holdsLock(tid, p);
+        return lockManager.hasLock(tid, p);
     }
 
     /**
@@ -164,9 +160,9 @@ public class BufferPool {
      * @param commit a flag indicating whether we should commit or abort
      */
     public void transactionComplete(TransactionId tid, boolean commit) {
-        if (this.lockManager.getPagesHeldBy(tid) == null)
+        if (this.lockManager.getPagesUnderTransaction(tid) == null)
             return;
-        Set<PageId> pageIds = this.lockManager.getPagesHeldBy(tid);
+        Set<PageId> pageIds = this.lockManager.getPagesUnderTransaction(tid);
         if (commit) {
             for (PageId pageId : pageIds) {
                 try {
