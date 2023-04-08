@@ -43,7 +43,6 @@ public class BufferPool {
 
     private HashMap<PageId, LRUHelper> pidLRUMap;
     private LockManager lockManager;
-    private Boolean steal = false;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -93,9 +92,9 @@ public class BufferPool {
             throws TransactionAbortedException, DbException {
         // some code goes here
         if (perm.equals(Permissions.READ_WRITE)) {
-            lockManager.getLock(pid, tid, true);
+            lockManager.acquireWriteLock(tid, pid);
         } else {
-            lockManager.getLock(pid, tid, false);
+            lockManager.acquireReadLock(tid, pid);
         }
 
         if (pidLRUMap.containsKey(pid)) {
@@ -165,17 +164,16 @@ public class BufferPool {
      * @param commit a flag indicating whether we should commit or abort
      */
     public void transactionComplete(TransactionId tid, boolean commit) {
-        // some code goes here
-        // no need to do anything if the the transaction is not holding onto any pages
-        if (this.lockManager.getPagesUnderTransaction(tid) == null) {
+        if (this.lockManager.getPagesHeldBy(tid) == null)
             return;
-        }
-        Set<PageId> pageIds = this.lockManager.getPagesUnderTransaction(tid);
+        Set<PageId> pageIds = this.lockManager.getPagesHeldBy(tid);
         if (commit) {
-            try {
-                flushPages(tid);
-            } catch (IOException e) {
-                e.printStackTrace();
+            for (PageId pageId : pageIds) {
+                try {
+                    this.flushPage(pageId);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         } else {
             for (PageId pageId : pageIds)
@@ -357,13 +355,9 @@ public class BufferPool {
         // get the list of pages of the transaction
         // flush each page
 
-        for (PageId pid : lockManager.getPagesUnderTransaction(tid)) {
-            try {
-                flushPage(pid);
-
-            } catch (Exception e) {
-                throw new IOException("Failed to flush page with PageID with tableId: " + pid.getTableId()
-                        + " and pgNo of: " + pid.getPageNumber());
+        for (PageId pid : this.pidLRUMap.keySet()) {
+            if (pidLRUMap.get(pid).page.isDirty() != null) {
+                flushPage(pidLRUMap.get(pid).page.getId());
             }
         }
     }
