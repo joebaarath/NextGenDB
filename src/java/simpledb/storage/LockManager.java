@@ -1,203 +1,265 @@
 package simpledb.storage;
 
+import java.util.*;
+
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
+/**
+ * LockManager keeps track of which locks each transaction holds and checks to see if a lock should be granted to a
+ * transaction when it is requested.
+ */
 public class LockManager {
-
-    // To implement a simple timeout policy
-    // Timeout is 1 second
-    // private static LockManager lockManager = null;
-    public static final long TIMEOUT = 1000;
-    private Map<PageId, ArrayList<Lock>> lockMap;
+    private Map<PageId, Lock> lockMap;
+    private Map<TransactionId, Set<TransactionId>> dependencyGraph;
     private Map<TransactionId, Set<PageId>> pagesUnderTransaction;
 
     public LockManager() {
-        lockMap = new HashMap<PageId, ArrayList<Lock>>();
+        lockMap = new HashMap<PageId, Lock>();
+        dependencyGraph = new HashMap<TransactionId, Set<TransactionId>>();
         pagesUnderTransaction = new HashMap<TransactionId, Set<PageId>>();
     }
 
-    // public static LockManager getInstance(){
-    // if(lockManager == null){
-    // lockManager = new LockManager();
-    // }
-    // return lockManager;
-    // }
-    public synchronized boolean availableLock(PageId lockedPID, TransactionId lockedTID, boolean isExclusive) {
-        ArrayList<Lock> lockEntries = lockMap.get(lockedPID);
-
-        // Changed from isEmpty() to == null
-        if (lockEntries == null) {
-            lockMap.put(lockedPID, new ArrayList<Lock>());
-            return true;
-        }
-
-        boolean toLock = false;
-        Lock lockToRemove = null;
-        Integer lastChecked = -1;
-
-        for (int i = 0; i < lockEntries.size(); i++) {
-            Lock lock = lockEntries.get(i);
-            if (lock.tid.equals(lockedTID)) {
-                if (lock.isGranted) {
-                    if (isExclusive && !lock.isExclusive) {
-                        toLock = true;
-                        lockToRemove = lock;
-                    } else {
-                        return true;
-                    }
-                }
-            } else {
-                if (!lock.isExclusive && lock.isGranted) {
-                    lastChecked = i;
-                }
-
-                if (lock.isExclusive && lock.isGranted) {
-                    return false;
-                }
+    public void getReadLock(TransactionId tid, PageId pid)
+            throws TransactionAbortedException {
+        Lock lock;
+        synchronized (this) {
+            lock = getLock(pid);
+            if(lock.heldBy(tid)) {
+                return;
             }
-        }
-
-        if (toLock) {
-            if (lastChecked > -1) {
-                lockEntries.remove(lockToRemove);
-                if (lastChecked != lockEntries.size()) {
-                    lockEntries.add(lastChecked + 1, new Lock(true, false, lockedTID));
-                }
-
-                else {
-                    lockEntries.add(new Lock(true, false, lockedTID));
-                }
-                return false;
-            }
-            return true;
-        }
-
-        if (!lockEntries.isEmpty() && isExclusive) {
-            return false;
-        }
-        return true;
-    }
-
-    public void getLock(PageId pid, TransactionId tid, boolean isExclusive) throws TransactionAbortedException {
-        synchronized (this.lockMap) {
-            ArrayList<Lock> lockEntries = lockMap.get(pid);
-            // If the lock is available
-            if (lockEntries != null) {
-                if (!availableLock(pid, tid, isExclusive)) {
-                    Lock newLock = new Lock(isExclusive, false, tid);
-                    if (!lockEntries.contains(newLock)) {
-                        lockEntries.add(newLock);
-
-                    }
-                } else {
-                    Lock newLock = new Lock(isExclusive, true, tid);
-                    if (!lockEntries.contains(newLock)) {
-                        lockEntries.add(newLock);
-                        Set<PageId> pages = pagesUnderTransaction.get(tid);
-                        if (pages == null) {
-                            pages = new HashSet<PageId>();
-                        }
-                        pages.add(pid);
-                        pagesUnderTransaction.put(tid, pages);
-                    }
-                    return;
-                }
-            }
-        }
-
-        long checkpoint = System.currentTimeMillis();
-        while (!availableLock(pid, tid, isExclusive)) {
-            try {
-                Thread.sleep(1);
-                long now = System.currentTimeMillis();
-                if (now - checkpoint >= TIMEOUT) {
+            if (!lock.holders().isEmpty() && lock.isExclusive()) {
+                dependencyGraph.put(tid, lock.holders());
+                if (isDeadLocked(tid)) {
+                    dependencyGraph.remove(tid);
                     throw new TransactionAbortedException();
                 }
-            } catch (InterruptedException e) {
             }
         }
-
-        // lock is free! grab it.
-        synchronized (this.lockMap) {
-            lockMap.get(pid).add(new Lock(isExclusive, true, tid));
-            Set<PageId> pages = pagesUnderTransaction.get(tid);
-            if (pages == null) {
-                pages = new HashSet<PageId>();
-            }
-            pages.add(pid);
-            pagesUnderTransaction.put(tid, pages);
+        lock.rLock(tid);
+        synchronized (this) {
+            dependencyGraph.remove(tid);
+            getTransactionPages(tid).add(pid);
         }
     }
 
-    // For unsafeReleasePage
-    // Release lock for a transaction
-    public synchronized void releaseLock(TransactionId tid, PageId pid) {
-        ArrayList<Lock> lockEntries = lockMap.get(pid);
-
-        for (Lock lockToRelease : lockEntries) {
-            if (lockToRelease.tid.equals(tid)) {
-                lockEntries.remove(lockToRelease);
-                pagesUnderTransaction.get(tid).remove(pid);
-                break;
+    public void getWriteLock(TransactionId tid, PageId pid)
+            throws TransactionAbortedException {
+        Lock lock;
+        synchronized (this) {
+            lock = getLock(pid);
+            if (lock.isExclusive() && lock.heldBy(tid)) {
+                return;                
             }
-        }
-    }
-
-    // For transactionComplete
-    // Release all locks for a particular transaction
-    public void releaseAllLocks(TransactionId tid) {
-        for (PageId pid : lockMap.keySet()) {
-            ArrayList<Lock> lockEntries = lockMap.get(pid);
-
-            HashSet<Lock> toRemove = new HashSet<Lock>();
-            for (Lock lockToRelease : lockEntries) {
-                if (lockToRelease.tid.equals(tid)) {
-                    toRemove.add(lockToRelease);
+            if (!lock.holders().isEmpty()){
+                dependencyGraph.put(tid, lock.holders());
+                if (isDeadLocked(tid)) {
+                    dependencyGraph.remove(tid);
+                    throw new TransactionAbortedException();
                 }
             }
-
-            for (Lock lockToRelease : toRemove) {
-                lockEntries.remove(lockToRelease);
-            }
-            pagesUnderTransaction.get(tid).clear();
+        }
+        lock.wLock(tid);
+        synchronized (this) {
+            dependencyGraph.remove(tid);
+            getTransactionPages(tid).add(pid);
         }
     }
 
-    // For holdLocks
-    public boolean holdsLock(TransactionId tid, PageId pid) {
-        ArrayList<Lock> lockEntries = lockMap.get(pid);
+    public synchronized void releaseLock(TransactionId tid, PageId pid) {
+        if (!lockMap.containsKey(pid)){
+            return;
+        }
+        Lock lock = lockMap.get(pid);
+        lock.unlock(tid);
+        pagesUnderTransaction.get(tid).remove(pid);
+    }
 
-        for (Lock lock : lockEntries) {
-            if (lock.tid.equals(tid)) {
-                return true;
+    public synchronized void releaseAllLocks(TransactionId tid) {
+        if (!pagesUnderTransaction.containsKey(tid)){
+            return;
+        }
+        Set<PageId> pages = pagesUnderTransaction.get(tid);
+        for (Object pageId: pages.toArray()) {
+            releaseLock(tid, ((PageId) pageId));
+        }
+        pagesUnderTransaction.remove(tid);
+    }
+
+    private Lock getLock(PageId pageId) {
+        if (!lockMap.containsKey(pageId)) {
+            lockMap.put(pageId, new Lock());
+        }
+        return lockMap.get(pageId);
+    }
+
+    private Set<PageId> getTransactionPages(TransactionId tid) {
+        if (!pagesUnderTransaction.containsKey(tid)) {
+            pagesUnderTransaction.put(tid, new HashSet<PageId>());
+        }
+        return pagesUnderTransaction.get(tid);
+    }
+
+    private boolean isDeadLocked(TransactionId tid) {
+        Set<TransactionId> visited = new HashSet<TransactionId>();
+        Queue<TransactionId> q = new LinkedList<TransactionId>();
+        visited.add(tid);
+        q.offer(tid);
+        while (!q.isEmpty()) {
+            TransactionId head = q.poll();
+            if (!dependencyGraph.containsKey(head)) {
+                continue;
+            }
+            for (TransactionId adj: dependencyGraph.get(head)) {
+                if (adj.equals(head)) {
+                    continue;
+                }
+                if (!visited.contains(adj)) {
+                    visited.add(adj);
+                    q.offer(adj);
+                } else {
+                    // Deadlock detected!
+                    return true;
+                }
             }
         }
         return false;
     }
 
-    public Set<PageId> getPagesUnderTransaction(TransactionId tid) {
-        if (pagesUnderTransaction.containsKey(tid))
-            return pagesUnderTransaction.get(tid);
-        return null;
+    public boolean hasLock(TransactionId tid, PageId pid) {
+        return pagesUnderTransaction.containsKey(tid) 
+                && pagesUnderTransaction.get(tid).contains(pid);
     }
 
-    // For 2.4
-    private class Lock {
-        boolean isExclusive;
-        boolean isGranted;
-        final TransactionId tid;
-
-        private Lock(boolean isExclusive, boolean isGranted, TransactionId tid) {
-            this.tid = tid;
-            this.isExclusive = isExclusive;
-            this.isGranted = isGranted;
+    public Set<PageId> getPagesUnderTransaction(TransactionId tid) {
+        if (pagesUnderTransaction.containsKey(tid)) {
+            return pagesUnderTransaction.get(tid);
         }
+        return null;
+    }
+}
+
+class Lock {
+    Set<TransactionId> holders;
+    Map<TransactionId, Boolean> acquirers;
+    boolean exclusive;
+    private int readNum;
+    private int writeNum;
+
+    public Lock() {
+        holders = new HashSet<TransactionId>();
+        acquirers = new HashMap<TransactionId, Boolean>();
+        exclusive = false;
+        readNum = 0;
+        writeNum = 0;
+    }
+
+    public void rLock(TransactionId tid) {
+        if (holders.contains(tid) && !exclusive) {
+            return;
+        }
+        acquirers.put(tid, false);
+        synchronized (this) {
+            try {
+                while (writeNum != 0) {
+                    this.wait();
+                }
+                readNum += 1;
+                holders.add(tid);
+                exclusive = false;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        acquirers.remove(tid);
+    }
+
+    public void wLock(TransactionId tid) {
+        if (holders.contains(tid) && exclusive) {
+            return;
+        }
+        if (acquirers.containsKey(tid) && acquirers.get(tid)) {
+            return;
+        }
+        acquirers.put(tid, true);
+        synchronized (this) {
+            try {
+                if (holders.contains(tid)) {
+                    while (holders.size() > 1) {
+                        this.wait();
+                    }
+                    bochapReadUnlock(tid);
+                }
+                while (readNum != 0 || writeNum != 0) {
+                    this.wait();
+                }
+                writeNum += 1;
+                holders.add(tid);
+                exclusive = true;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        acquirers.remove(tid);
+    }
+
+    private void bochapReadUnlock(TransactionId tid) {
+        if (!holders.contains(tid)) {
+            return;
+        }
+        synchronized (this) {
+            readNum -= 1;
+            holders.remove(tid);
+        }
+    }
+
+    public void readUnlock(TransactionId tid) {
+        if (!holders.contains(tid)) {
+            return;
+        }
+        synchronized (this) {
+            readNum -= 1;
+            holders.remove(tid);
+            notifyAll();
+        }
+    }
+
+    public void writeUnlock(TransactionId tid) {
+        if (!holders.contains(tid)) {
+            return;
+        }
+        if (!exclusive) {
+            return;
+        }
+        synchronized (this) {
+            writeNum -= 1;
+            holders.remove(tid);
+            notifyAll();
+        }
+    }
+
+    public void unlock(TransactionId tid) {
+        if (!exclusive) {
+            readUnlock(tid);
+        }
+        else {
+            writeUnlock(tid);
+        }
+    }
+
+    public Set<TransactionId> holders() {
+        return holders;
+    }
+
+    public boolean isExclusive() {
+        return exclusive;
+    }
+
+    public Set<TransactionId> acquirers() {
+        return acquirers.keySet();
+    }
+
+    public boolean heldBy(TransactionId tid) {
+        return holders().contains(tid);
     }
 }

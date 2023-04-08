@@ -23,7 +23,7 @@ public class Delete extends Operator {
     /**
      * Constructor specifying the transaction that this delete belongs to as
      * well as the child to read from.
-     * 
+     *
      * @param t
      *            The transaction this delete runs in
      * @param child
@@ -77,35 +77,30 @@ public class Delete extends Operator {
      * Deletes tuples as they are read from the child operator. Deletes are
      * processed via the buffer pool (which can be accessed via the
      * Database.getBufferPool() method.
-     * 
+     *
      * @return A 1-field tuple containing the number of deleted records.
      * @see Database#getBufferPool
      * @see BufferPool#deleteTuple
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
-        if(isFetched == true){
+        if (!isFetched) {
+            int cnt = 0;
+            try {
+                while (child.hasNext()) {
+                    Database.getBufferPool().deleteTuple(tid, child.next());
+                    ++cnt;
+                }
+            } catch (DbException | IOException e) {
+                e.printStackTrace();
+            }
+            Tuple res = new Tuple(tupleDesc);
+            res.setField(0, new IntField(cnt));
+            isFetched = true;
+            return res;
+        } else {
             return null;
         }
-        else{
-            isFetched=true;
-        }
-
-        //reset count
-        count = 0;
-        while (child.hasNext()){
-            try {
-                Tuple tupleToDelete = this.child.next();
-                Database.getBufferPool().deleteTuple(this.tid, tupleToDelete);
-                count += 1;
-            } catch (Exception e) {
-                throw new DbException("Deletion Operation failed.");
-            }
-
-        }
-        Tuple tupleWithCountValue = new Tuple(tupleDesc);
-        tupleWithCountValue.setField(0, new IntField(count));
-        return tupleWithCountValue;
     }
 
     @Override
