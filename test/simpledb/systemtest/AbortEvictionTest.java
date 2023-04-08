@@ -165,10 +165,10 @@ public class AbortEvictionTest extends SimpleDbTestBase {
      * This requires dirty pages to <em>not</em> get flushed to disk.
      */
     @Test public void nextGenTestDoNotEvictDirtyPages2()
-            throws IOException, DbException, TransactionAbortedException {
+            throws IOException, DbException, TransactionAbortedException, InterruptedException {
         // Allocate a file with ~10 pages of data
         HeapFile f = SystemTestUtil.createRandomHeapFile(2, 512*10, null, null);
-        Database.resetBufferPool(50);
+        Database.resetBufferPool(10);
 
         // BEGIN TRANSACTION
         Transaction t = new Transaction();
@@ -176,22 +176,28 @@ public class AbortEvictionTest extends SimpleDbTestBase {
 
         // Insert a new row
         AbortEvictionTest.insertRow(f, t);
-        t.commit();
-
         // The tuple must exist in the table
         boolean found = AbortEvictionTest.findMagicTuple(f, t);
         assertTrue(found);
+        //COMMIT FIRST TRANSACTION
+        t.commit();
 
-        // BEGIN TRANSACTION
+        // A second transaction delete the row
+        t = new Transaction();
+        t.start();
+
+        // delete the row
         boolean isDeleteSuccess = AbortEvictionTest.nextGenDeleteRow(f, t);
         assertTrue(isDeleteSuccess);
-
         found = AbortEvictionTest.findMagicTuple(f, t);
         assertFalse(found);
 
-        t.transactionComplete(false);
-        found = AbortEvictionTest.findMagicTuple(f, t);
-        assertFalse(found);
+        // abort
+        t.transactionComplete(true);
+
+        // row must now be found after abort
+        found = AbortEvictionTest.findMagicTuple(f, t); // todo: FIX NON-DETERMINISTIC BEHAVIOUR
+        assertTrue(found);
 
 
     }

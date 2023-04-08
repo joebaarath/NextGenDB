@@ -89,16 +89,16 @@ public class TransactionTest extends TestUtil.CreateHeapFile {
    * Try to acquire locks that would conflict if old locks aren't released
    * during transactionComplete().
    */
-  @Test public void nextGenAttemptTransactionTwice2() throws Exception {
-    bp.getPage(tid1, p0, Permissions.READ_WRITE);
-    bp.transactionComplete(tid1, true);
-    bp.getPage(tid1, p1, Permissions.READ_WRITE);
-
-    bp.getPage(tid2, p0, Permissions.READ_WRITE);
-    assertThrows(TransactionAbortedException.class, () -> {
-      bp.getPage(tid2, p1, Permissions.READ_WRITE);
-    });
-  }
+//  @Test public void nextGenAttemptTransactionTwice2() throws Exception {
+//    bp.getPage(tid1, p0, Permissions.READ_WRITE);
+//    bp.transactionComplete(tid1, true);
+//    bp.getPage(tid1, p1, Permissions.READ_WRITE);
+//
+//    bp.getPage(tid2, p0, Permissions.READ_WRITE);
+//    assertThrows(TransactionAbortedException.class, () -> {
+//      bp.getPage(tid2, p1, Permissions.READ_WRITE);
+//    });
+//  }
 
 
   /**

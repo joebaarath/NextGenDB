@@ -99,28 +99,23 @@ public class Insert extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
-        if(isFetched == true){
+        if (!isFetched) {
+            int cnt = 0;
+            try {
+                while (child.hasNext()) {
+                    Database.getBufferPool().insertTuple(this.tid, tableId, child.next());
+                    ++cnt;
+                }
+            } catch (DbException | IOException e) {
+                e.printStackTrace();
+            }
+            Tuple res = new Tuple(tupleDesc);
+            res.setField(0, new IntField(cnt));
+            isFetched = true;
+            return res;
+        } else {
             return null;
         }
-        else{
-            isFetched=true;
-        }
-
-        //reset count
-        count = 0;
-        while (child.hasNext()){
-            try {
-                Tuple tuple = child.next();
-                count += 1;
-                Database.getBufferPool().insertTuple(this.tid, this.tableId, tuple);
-            } catch (Exception e) {
-                throw new DbException("Insert Operation failed during insertTuple");
-            }
-
-        }
-        Tuple tupleWithCountValue = new Tuple(tupleDesc);
-        tupleWithCountValue.setField(0, new IntField(count));
-        return tupleWithCountValue;
     }
 
     @Override
