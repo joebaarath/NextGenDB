@@ -164,11 +164,11 @@ public class AbortEvictionTest extends SimpleDbTestBase {
     /** Aborts a transaction and ensures that its effects were actually undone.
      * This requires dirty pages to <em>not</em> get flushed to disk.
      */
-    @Test public void nextGenTestDoNotEvictDirtyPages2()
+    @Test public void nextGenTestAbortTransactionWithDeleteTuple()
             throws IOException, DbException, TransactionAbortedException, InterruptedException {
         // Allocate a file with ~10 pages of data
         HeapFile f = SystemTestUtil.createRandomHeapFile(2, 512*10, null, null);
-        Database.resetBufferPool(10);
+        Database.resetBufferPool(3);
 
         // BEGIN TRANSACTION
         Transaction t = new Transaction();
@@ -196,7 +196,7 @@ public class AbortEvictionTest extends SimpleDbTestBase {
         t.transactionComplete(true);
 
         // row must now be found after abort
-        found = AbortEvictionTest.findMagicTuple(f, t); // todo: FIX NON-DETERMINISTIC BEHAVIOUR
+        found = AbortEvictionTest.findMagicTuple(f, t);
         assertTrue(found);
 
 

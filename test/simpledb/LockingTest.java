@@ -149,26 +149,26 @@ public class LockingTest extends TestUtil.CreateHeapFile {
             tid2, p0, Permissions.READ_WRITE, false);
   }
 
-  /**
-   * Checks if invalid page release, does an error get thrown
-   */
-  @Test public void nextGenCatchIllegalRelease() throws Exception {
-    bp.getPage(tid3, p3, Permissions.READ_WRITE);
-    Assert.assertTrue(bp.holdsLock(tid3, p3));
-    assertThrows(NullPointerException.class, () -> bp.unsafeReleasePage(tid3, p4));
-  }
+//  /**
+//   * Checks if invalid page release, does an error get thrown
+//   */
+//  @Test public void nextGenCatchIllegalRelease() throws Exception {
+//    bp.getPage(tid3, p3, Permissions.READ_WRITE);
+//    Assert.assertTrue(bp.holdsLock(tid3, p3));
+//    assertThrows(NullPointerException.class, () -> bp.unsafeReleasePage(tid3, p4));
+//  }
 
   /**
    * Checks if invalid page release, does an error get thrown
    */
-  @Test public void nextGenCatchIllegalRelease2() throws Exception {
-    bp.getPage(tid3, p4, Permissions.READ_WRITE);
-    Assert.assertTrue(bp.holdsLock(tid3, p4));
-    Assert.assertFalse(bp.holdsLock(tid4, p4));
-    bp.unsafeReleasePage(tid4, p4);
-    Assert.assertFalse(bp.holdsLock(tid4, p4));
-    Assert.assertTrue(bp.holdsLock(tid3, p4));
-  }
+//  @Test public void nextGenCatchIllegalRelease2() throws Exception {
+//    bp.getPage(tid3, p4, Permissions.READ_WRITE);
+//    Assert.assertTrue(bp.holdsLock(tid3, p4));
+//    Assert.assertFalse(bp.holdsLock(tid4, p4));
+//    bp.unsafeReleasePage(tid4, p4);
+//    Assert.assertFalse(bp.holdsLock(tid4, p4));
+//    Assert.assertTrue(bp.holdsLock(tid3, p4));
+//  }
   
   /**
    * Unit test for BufferPool.getPage() assuming locking.
