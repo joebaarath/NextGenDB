@@ -69,7 +69,6 @@ public class RecordId implements Serializable {
     public int hashCode() {
         // some code goes here
         return this.pid.hashCode()*100000000 + this.tupleno;
-
     }
 
 }
