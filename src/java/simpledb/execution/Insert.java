@@ -100,19 +100,19 @@ public class Insert extends Operator {
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
         if (!isFetched) {
-            int cnt = 0;
+            int count = 0;
             try {
                 while (child.hasNext()) {
                     Database.getBufferPool().insertTuple(this.tid, tableId, child.next());
-                    ++cnt;
+                    count += 1;
                 }
             } catch (DbException | IOException e) {
                 e.printStackTrace();
             }
-            Tuple res = new Tuple(tupleDesc);
-            res.setField(0, new IntField(cnt));
+            Tuple nextTuple = new Tuple(tupleDesc);
+            nextTuple.setField(0, new IntField(count));
             isFetched = true;
-            return res;
+            return nextTuple;
         } else {
             return null;
         }
