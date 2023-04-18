@@ -200,7 +200,7 @@ public class BTreeFile implements DbFile {
 			entry = bteIterator.next();
 			// Comparing keys + handling f==null case
 			// Recursive method so only first return needs perm and not those below
-			if(f.compare(Op.LESS_THAN_OR_EQ, entry.getKey())|| f == null){
+			if(f == null || f.compare(Op.LESS_THAN_OR_EQ, entry.getKey()) ){
 				return this.findLeafPage(tid, dirtypages, entry.getLeftChild(), Permissions.READ_ONLY, f);
 			}
 		}
@@ -493,6 +493,10 @@ public class BTreeFile implements DbFile {
 			if(perm == Permissions.READ_WRITE) {
 				dirtypages.put(pid, p);
 			}
+
+			// unpin buffer
+			Database.getBufferPool().LRUUnpin(pid);
+
 			return p;
 		}
 	}
@@ -530,6 +534,9 @@ public class BTreeFile implements DbFile {
 
 		// insert the tuple into the leaf page
 		leafPage.insertTuple(t);
+
+		// unpin buffer
+		Database.getBufferPool().LRUUnpin(leafPage.pid);
 
         return new ArrayList<>(dirtypages.values());
 	}
@@ -1011,6 +1018,9 @@ public class BTreeFile implements DbFile {
 		if(page.getNumEmptySlots() > maxEmptySlots) {
 			handleMinOccupancyPage(tid, dirtypages, page);
 		}
+
+		// unpin buffer
+		Database.getBufferPool().LRUUnpin(page.pid);
 
         return new ArrayList<>(dirtypages.values());
 	}

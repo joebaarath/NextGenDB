@@ -87,26 +87,26 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
-        try
-        {
-            if (perm.equals(Permissions.READ_WRITE)) {
-                lockManager.getWriteLock(tid, pid);
-            } else {
-                lockManager.getReadLock(tid, pid);
+        if (perm.equals(Permissions.READ_WRITE)) {
+            lockManager.getWriteLock(tid, pid);
+        } else {
+            lockManager.getReadLock(tid, pid);
+        }
+
+        if (pidLRUMap.containsKey(pid)) {
+
+            // increment LRU pin count
+            LRUHelper frame = pidLRUMap.get(pid);
+            if (frame != null) {
+                frame.pinCount += 1;
             }
 
-            if (pidLRUMap.containsKey(pid)) {
+            return pidLRUMap.get(pid).page;
+        } else {
 
-                // increment LRU pin count
-                LRUHelper frame = pidLRUMap.get(pid);
-                if (frame != null) {
-                    frame.pinCount += 1;
-                }
-
-                return pidLRUMap.get(pid).page;
-            } else {
-                DbFile fileToRead = (DbFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
-                    Page pageToRead = (Page) fileToRead.readPage(pid);
+            try{
+                DbFile fileToRead = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                Page pageToRead = (Page) fileToRead.readPage(pid);
 
                 if (pidLRUMap.size() >= numPages) {
                     evictPage();
@@ -120,14 +120,13 @@ public class BufferPool {
 
                 return pageToRead;
             }
+            catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
+                throw new DbException(e.getMessage());
+            }
+
 
         }
-        catch (TransactionAbortedException | DbException | ClassNotFoundException | IOException e)
-        {
-            e.printStackTrace();
-        }
-
-        return null;
     }
 
     /**
