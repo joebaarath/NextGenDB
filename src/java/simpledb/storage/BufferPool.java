@@ -87,37 +87,47 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
             throws TransactionAbortedException, DbException {
         // some code goes here
-        if (perm.equals(Permissions.READ_WRITE)) {
-            lockManager.getWriteLock(tid, pid);
-        } else {
-            lockManager.getReadLock(tid, pid);
+        try
+        {
+            if (perm.equals(Permissions.READ_WRITE)) {
+                lockManager.getWriteLock(tid, pid);
+            } else {
+                lockManager.getReadLock(tid, pid);
+            }
+
+            if (pidLRUMap.containsKey(pid)) {
+
+                // increment LRU pin count
+                LRUHelper frame = pidLRUMap.get(pid);
+                if (frame != null) {
+                    frame.pinCount += 1;
+                }
+
+                return pidLRUMap.get(pid).page;
+            } else {
+                DbFile fileToRead = (DbFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
+                    Page pageToRead = (Page) fileToRead.readPage(pid);
+
+                if (pidLRUMap.size() >= numPages) {
+                    evictPage();
+                }
+
+                // keep track of pins
+                if (pidLRUMap.get(pid) == null) {
+                    LRUHelper myLRU = new LRUHelper(pageToRead, 1, LRUHelper.incrementLatestUsedCount());
+                    pidLRUMap.put(pid, myLRU);
+                }
+
+                return pageToRead;
+            }
+
+        }
+        catch (TransactionAbortedException | DbException | ClassNotFoundException | IOException e)
+        {
+            e.printStackTrace();
         }
 
-        if (pidLRUMap.containsKey(pid)) {
-
-            // increment LRU pin count
-            LRUHelper frame = pidLRUMap.get(pid);
-            if (frame != null) {
-                frame.pinCount += 1;
-            }
-
-            return pidLRUMap.get(pid).page;
-        } else {
-            HeapFile fileToRead = (HeapFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
-            HeapPage pageToRead = (HeapPage) fileToRead.readPage(pid);
-
-            if (pidLRUMap.size() >= numPages) {
-                evictPage();
-            }
-
-            // keep track of pins
-            if (pidLRUMap.get(pid) == null) {
-                LRUHelper myLRU = new LRUHelper(pageToRead, 1, LRUHelper.incrementLatestUsedCount());
-                pidLRUMap.put(pid, myLRU);
-            }
-
-            return pageToRead;
-        }
+        return null;
     }
 
     /**
@@ -203,8 +213,8 @@ public class BufferPool {
         // (this extra level of indirection is needed to support
         // other types of files — like indices — in the future).
 
-        HeapFile heapFile = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
-        List<Page> insertedPages = heapFile.insertTuple(tid, t);
+        DbFile dbFile =  Database.getCatalog().getDatabaseFile(tableId);
+        List<Page> insertedPages = dbFile.insertTuple(tid, t);
         for (Page page : insertedPages) {
             page.markDirty(true, tid);
 
@@ -246,8 +256,8 @@ public class BufferPool {
         // not necessary for lab1
 
         int tableId = t.getRecordId().getPageId().getTableId();
-        HeapFile heapFile = (HeapFile) Database.getCatalog().getDatabaseFile(tableId);
-        List<Page> deletedPages = heapFile.deleteTuple(tid, t);
+        DbFile dbFile = (DbFile) Database.getCatalog().getDatabaseFile(tableId);
+        List<Page> deletedPages = dbFile.deleteTuple(tid, t);
         for (Page page : deletedPages) {
             page.markDirty(true, tid);
 
@@ -328,14 +338,19 @@ public class BufferPool {
         // flushPage should write any dirty page to disk
         // and mark it as not dirty,
         // while leaving it in the BufferPool.
+
         try {
-            Page pg = pidLRUMap.get(pid).page;
-            if (pg.isDirty() != null) {
-                DbFile dbFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
-                dbFile.writePage(pg);
-                pg.markDirty(true, null);
+            Page pg = this.pidLRUMap.get(pid).page;
+            if (this.pidLRUMap.containsKey(pid)) {
+                TransactionId dirty = pg.isDirty();
+                if (dirty != null) {
+                    DbFile hpFile = Database.getCatalog().getDatabaseFile(pid.getTableId());
+                    hpFile.writePage(pg);
+                    pg.markDirty(false, null);
+                }
             }
         } catch (Exception e) {
+            e.printStackTrace();
             throw new IOException("Exception during flushing of page with pageid with table id:" + pid.getTableId()
                     + " and pageNum: " + pid.getPageNumber());
         }
@@ -436,6 +451,7 @@ public class BufferPool {
             // pidLRUMap.remove(pg.getId());
 
         } catch (Exception e) {
+            e.printStackTrace();
             throw new DbException("Could not evict page");
         }
 
