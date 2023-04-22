@@ -58,14 +58,32 @@ public class BTreeFileReadTest extends SimpleDbTestBase {
 	 */
 	@Test
 	public void getTupleDesc() {
-		assertEquals(td, f.getTupleDesc());        
+		assertEquals(td, f.getTupleDesc());
 	}
+
+	/**
+	 * Unit test for BTreeFile.getTupleDesc()
+	 */
+	@Test
+	public void NextGenGetTupleDesc() {
+		TupleDesc td2 = Utility.getTupleDesc(3);
+		assertNotEquals(td2, f.getTupleDesc());
+	}
+
 	/**
 	 * Unit test for BTreeFile.numPages()
 	 */
 	@Test
 	public void numPages() {
 		assertEquals(1, f.numPages());
+	}
+
+	/**
+	 * Unit test for BTreeFile.numPages()
+	 */
+	@Test
+	public void NextGenNumPages() {
+		assertNotEquals(2, f.numPages());
 	}
 
 	/**
@@ -139,17 +157,18 @@ public class BTreeFileReadTest extends SimpleDbTestBase {
 	/**
 	 * Unit test for BTreeFile.indexIterator()
 	 */
-	@Test public void indexIterator() throws Exception {
+	@Test
+	public void indexIterator() throws Exception {
 		BTreeFile twoLeafPageFile = BTreeUtility.createBTreeFile(2, 520,
 				null, null, 0);
-		Field f =  new IntField(5);
+		Field f = new IntField(5);
 
 		// greater than
 		IndexPredicate ipred = new IndexPredicate(Op.GREATER_THAN, f);
 		DbFileIterator it = twoLeafPageFile.indexIterator(tid, ipred);
 		it.open();
 		int count = 0;
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			Tuple t = it.next();
 			assertTrue(t.getField(0).compare(Op.GREATER_THAN, f));
 			count++;
@@ -162,7 +181,7 @@ public class BTreeFileReadTest extends SimpleDbTestBase {
 		it = twoLeafPageFile.indexIterator(tid, ipred);
 		it.open();
 		count = 0;
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			Tuple t = it.next();
 			assertTrue(t.getField(0).compare(Op.LESS_THAN_OR_EQ, f));
 			count++;
@@ -175,7 +194,7 @@ public class BTreeFileReadTest extends SimpleDbTestBase {
 		it = twoLeafPageFile.indexIterator(tid, ipred);
 		it.open();
 		count = 0;
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			Tuple t = it.next();
 			assertTrue(t.getField(0).compare(Op.EQUALS, f));
 			count++;
@@ -189,7 +208,7 @@ public class BTreeFileReadTest extends SimpleDbTestBase {
 		it = twoLeafPageFile.indexIterator(tid, ipred);
 		it.open();
 		count = 0;
-		while(it.hasNext()) {
+		while (it.hasNext()) {
 			Tuple t = it.next();
 			assertTrue(t.getField(0).compare(Op.EQUALS, f));
 			count++;
