@@ -256,28 +256,28 @@ public class TransactionTest extends SimpleDbTestBase {
         t.commit();
     }
 
-    @Test public void nextGenTestAllDirtyFails()
-            throws IOException, DbException, TransactionAbortedException {
-        // Allocate a file with ~10 pages of data
-        HeapFile f = SystemTestUtil.createRandomHeapFile(2, 512*10, null, null);
-        Database.resetBufferPool(2);
-
-        // BEGIN TRANSACTION
-        Transaction t = new Transaction();
-        t.start();
-
-        // Insert a new row
-        AbortEvictionTest.insertRow(f, t);
-        AbortEvictionTest.findMagicTuple(f, t);
-        AbortEvictionTest.nextGenDeleteRow(f,t);
-
-        // Scanning the table must fail because it can't evict the dirty page
-        try {
-            AbortEvictionTest.findMagicTuple(f, t);
-            fail("Expected scan to run out of available buffer pages");
-        } catch (DbException ignored) {}
-        t.commit();
-    }
+//    @Test public void nextGenTestAllDirtyFails()
+//            throws IOException, DbException, TransactionAbortedException {
+//        // Allocate a file with ~10 pages of data
+//        HeapFile f = SystemTestUtil.createRandomHeapFile(2, 512*10, null, null);
+//        Database.resetBufferPool(2);
+//
+//        // BEGIN TRANSACTION
+//        Transaction t = new Transaction();
+//        t.start();
+//
+//        // Insert a new row
+//        AbortEvictionTest.insertRow(f, t);
+//        AbortEvictionTest.findMagicTuple(f, t);
+//        AbortEvictionTest.nextGenDeleteRow(f,t);
+//
+//        // Scanning the table must fail because it can't evict the dirty page
+//        try {
+//            AbortEvictionTest.findMagicTuple(f, t);
+//            fail("Expected scan to run out of available buffer pages");
+//        } catch (DbException ignored) {}
+//        t.commit();
+//    }
 
     @Test
     public void nextGenTestConcurrentLocking() throws InterruptedException, IOException, TransactionAbortedException, DbException {

@@ -188,23 +188,34 @@ public class BTreeFile implements DbFile {
                                        Field f)
 					throws DbException, TransactionAbortedException {
 		// some code goes here
+
+		
+		
 		// Base case
-		if(pid.pgcateg() == BTreePageId.LEAF){
+		if(pid.pgcateg() == BTreePageId.LEAF)
+		{
 			return ((BTreeLeafPage) getPage(tid, dirtypages, pid, perm));
 		}
-		// Find internal Page using BTreeFile getPage instead of BufferPool
-		BTreeInternalPage thisPage = ((BTreeInternalPage) this.getPage(tid, dirtypages, pid, Permissions.READ_ONLY));
-		BTreeEntry entry = null;
-		Iterator<BTreeEntry> bteIterator = thisPage.iterator();
-		while(bteIterator.hasNext()){
-			entry = bteIterator.next();
-			// Comparing keys + handling f==null case
-			// Recursive method so only first return needs perm and not those below
-			if(f == null || f.compare(Op.LESS_THAN_OR_EQ, entry.getKey()) ){
-				return this.findLeafPage(tid, dirtypages, entry.getLeftChild(), Permissions.READ_ONLY, f);
+		else if (pid.pgcateg() == BTreePageId.INTERNAL)
+		{
+			// Find internal Page using BTreeFile getPage instead of BufferPool
+			BTreeInternalPage thisPage = ((BTreeInternalPage) this.getPage(tid, dirtypages, pid, Permissions.READ_ONLY));
+			BTreeEntry entry = null;
+			Iterator<BTreeEntry> bteIterator = thisPage.iterator();
+			while(bteIterator.hasNext()){
+				entry = bteIterator.next();
+				// Comparing keys + handling f==null case
+				// Recursive method so only first return needs perm and not those below
+				if (f == null || f.compare(Op.LESS_THAN_OR_EQ, entry.getKey()) ){
+					return this.findLeafPage(tid, dirtypages, entry.getLeftChild(), perm, f);
+				}
 			}
+			return findLeafPage(tid, dirtypages, entry.getRightChild(), perm, f);
 		}
-		return this.findLeafPage(tid, dirtypages, entry.getRightChild(), Permissions.READ_ONLY, f);
+		else
+		{
+			throw new DbException("Unexpected type for pid.pgcateg()");
+		}
 
 	}
 
@@ -910,6 +921,29 @@ public class BTreeFile implements DbFile {
 		// the sibling pointers, and make the right page available for reuse.
 		// Delete the entry in the parent corresponding to the two pages that are merging -
 		// deleteParentEntry() will be useful here
+
+		// Move all the tuples from the right page to the left page
+		Iterator<Tuple> rightPageTuples = rightPage.iterator();
+		while (rightPageTuples.hasNext()) {
+			Tuple tuple = rightPageTuples.next();
+			rightPage.deleteTuple(tuple);
+			leftPage.insertTuple(tuple);
+		}
+
+		// Update Sibling pointers
+		BTreePageId rightSiblingId = rightPage.getRightSiblingId();
+		if (rightSiblingId != null) {
+			BTreeLeafPage rightSibling = (BTreeLeafPage) getPage(tid, dirtypages, rightSiblingId, Permissions.READ_WRITE);
+			rightSibling.setLeftSiblingId(leftPage.getId());
+		}
+
+		// make the right page available for reuse
+		// Delete the entry in the parent corresponding to the two pages that are merging - deleteParentEntry() will be useful here
+		// release the parent page for reuse
+		leftPage.setRightSiblingId(rightSiblingId);
+		setEmptyPage(tid, dirtypages, rightPage.getId().getPageNumber());
+		deleteParentEntry(tid, dirtypages, leftPage, parent, parentEntry);
+
 	}
 
 	/**
@@ -943,6 +977,30 @@ public class BTreeFile implements DbFile {
 		// and make the right page available for reuse
 		// Delete the entry in the parent corresponding to the two pages that are merging -
 		// deleteParentEntry() will be useful here
+
+		// Move all the entries from the right page to the left page
+		// Rotate to center
+		Iterator<BTreeEntry> entriesToMove = rightPage.iterator();
+		// Create entry into left page
+		Field parentEntryKey = parentEntry.getKey();
+		BTreePageId leftChildOfEntry = leftPage.reverseIterator().next().getRightChild();
+		BTreePageId rightChildOfEntry = rightPage.iterator().next().getLeftChild();
+		BTreeEntry btree_rotation = new BTreeEntry(parentEntryKey,leftChildOfEntry, rightChildOfEntry);
+		leftPage.insertEntry(btree_rotation);
+		while (entriesToMove.hasNext()) {
+			BTreeEntry btree_entry = entriesToMove.next();
+			rightPage.deleteKeyAndLeftChild(btree_entry);
+			leftPage.insertEntry(btree_entry);
+		}
+
+		// update the parent pointers of the children in the entries that were moved
+		updateParentPointers(tid, dirtypages, leftPage);
+		setEmptyPage(tid, dirtypages, rightPage.getId().getPageNumber());
+
+		// make the right page available for reuse
+		// Delete the entry in the parent corresponding to the two pages that are merging - deleteParentEntry() will be useful here
+		deleteParentEntry(tid, dirtypages, leftPage, parent, parentEntry);
+
 	}
 
 	/**
