@@ -154,13 +154,7 @@ public class HeapFile implements DbFile {
                 page.insertTuple(t);
                 page.markDirty(true,tid);
                 pagesToInsert.add(page);
-                // unpin buffer
-                Database.getBufferPool().LRUUnpin(heapPageId);
                 break;
-            }
-            else{
-                // unpin buffer
-                Database.getBufferPool().LRUUnpin(heapPageId);
             }
         }
 
@@ -175,8 +169,6 @@ public class HeapFile implements DbFile {
             newPage.insertTuple(t);
             newPage.markDirty(true, tid);
             pagesToInsert.add(newPage);
-            // unpin buffer
-            Database.getBufferPool().LRUUnpin(heapPageId);
         }
 
         return pagesToInsert;
@@ -197,8 +189,6 @@ public class HeapFile implements DbFile {
                 pagesToDelete.add(pageToDelete);
                 pageToDelete.deleteTuple(t);
 
-                // unpin buffer
-                Database.getBufferPool().LRUUnpin(pageId);
             }
         }
 
@@ -221,9 +211,6 @@ public class HeapFile implements DbFile {
 
         public Iterator<Tuple> findTuples(HeapPageId pid) throws TransactionAbortedException, DbException {
             HeapPage newPage = (HeapPage) Database.getBufferPool().getPage(tid, pid, Permissions.READ_ONLY);
-
-            // unpin buffer
-            Database.getBufferPool().LRUUnpin(pid);
 
             return newPage.iterator();
         }

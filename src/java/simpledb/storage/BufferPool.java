@@ -99,7 +99,10 @@ public class BufferPool {
             LRUHelper frame = pidLRUMap.get(pid);
             if (frame != null) {
                 frame.pinCount += 1;
+                // unpin buffer
+                LRUUnpin(frame.page.getId());
             }
+
 
             return pidLRUMap.get(pid).page;
         } else {
@@ -114,9 +117,12 @@ public class BufferPool {
 
                 // keep track of pins
                 if (pidLRUMap.get(pid) == null) {
+                    // pinCount = 1
                     LRUHelper myLRU = new LRUHelper(pageToRead, 1, LRUHelper.incrementLatestUsedCount());
                     pidLRUMap.put(pid, myLRU);
+                    LRUUnpin(pageToRead.getId());
                 }
+
 
                 return pageToRead;
             }
@@ -225,13 +231,19 @@ public class BufferPool {
             // update page
             LRUHelper frame = pidLRUMap.get(page.getId());
             if (frame == null) {
+                // pinCount = 1
                 frame = new LRUHelper(page, 1, LRUHelper.incrementLatestUsedCount());
+                // unpin buffer
+                LRUUnpin(page.getId());
             } else {
                 frame.pinCount += 1;
                 frame.page = page;
+                LRUUnpin(frame.page.getId());
+
             }
             this.pidLRUMap.put(page.getId(), frame);
             LRUUnpin(page.getId());
+
         }
 
     }
@@ -268,6 +280,7 @@ public class BufferPool {
             } else {
                 frame.pinCount += 1;
                 frame.page = page;
+                LRUUnpin(frame.page.getId());
             }
             this.pidLRUMap.put(page.getId(), frame);
             LRUUnpin(page.getId());
@@ -432,17 +445,20 @@ public class BufferPool {
             } else {
                 // find a new page to evict
                 currentPage++;
+                boolean pageRemoved = false;
                 while (currentPage < pids.size()) {
                     PageId pid = pids.get(currentPage);
                     Page page = pidLRUMap.get(pid).page;
                     if (page.isDirty() == null && pidLRUMap.get(page.getId()).pinCount == 0) {
                         pidLRUMap.remove(page.getId());
+                        pageRemoved = true;
                         break;
                     }
                     currentPage++;
                 }
-                throw new DbException("No available frames in buffer pool with pinCount = 0 to evict.");
-
+                if(pageRemoved == false){
+                    throw new DbException("No available frames in buffer pool with pinCount = 0 to evict.");
+                }
             }
             // if (pg.isDirty() != null) {
             // this.flushPage(pg.getId());
